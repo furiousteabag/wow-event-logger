@@ -1,0 +1,11 @@
+## Interface: 110007
+## Title: Event Watcher
+## Notes: Watches for events and logs them to a file.
+## Author: furiousteabag
+## Version: 1.0.0
+## RequiredDeps:
+## X-Curse-Project-ID: 99999
+## SavedVariables: EventWatcherDump
+## SavedVariablesPerCharacter: 
+
+EventWatcher.lua
