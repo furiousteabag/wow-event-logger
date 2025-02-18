@@ -1,0 +1,25 @@
+[project]
+name = "event-server"
+version = "0.1.0"
+description = "A WoW event listener server and a telegram bot"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.115.8",
+    "loguru>=0.7.3",
+    "python-dotenv>=1.0.1",
+    "python-telegram-bot>=21.10",
+    "supabase>=2.13.0",
+]
+
+[dependency-groups]
+dev = [
+    "black>=25.1.0",
+    "isort>=6.0.0",
+]
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+line_length = 120
