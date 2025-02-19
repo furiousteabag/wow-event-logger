@@ -89,7 +89,6 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
                             notifications[watcher.chat_id] = []
                         notifications[watcher.chat_id].append(char_update)
 
-        # Send grouped notifications
         for chat_id, char_updates in notifications.items():
             if char_updates:
                 message = "🎉 LEVEL UP\\! 🎉\n\n" + "\n".join(f"• {update}" for update in char_updates)
