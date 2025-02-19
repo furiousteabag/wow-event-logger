@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Optional, TypedDict
+from typing import Dict, Optional, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CharacterClass(str, Enum):
@@ -61,6 +61,53 @@ class CharacterUpdate(BaseModel):
     model_config = ConfigDict(
         use_attribute_docstrings=True,
         json_schema_extra={"examples": [{"level": 70, "online": False, "zone": "Stormwind"}]},
+    )
+
+
+class CharacterEventData(BaseModel):
+    online: bool
+    level: int
+    class_: CharacterClass = Field(alias="class")
+    zone: str
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={"example": {"online": True, "level": 23, "class": "warrior", "zone": "Thunder Bluff"}},
+    )
+
+    @field_validator("class_", mode="before")
+    @classmethod
+    def transform_class(cls, value: str) -> str:
+        return value.lower().replace(" ", "_")
+
+
+class WatchlistData(BaseModel):
+    watchlist: Dict[str, CharacterEventData]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "watchlist": {"Furioustea": {"online": True, "level": 23, "class": "warrior", "zone": "Thunder Bluff"}}
+            }
+        }
+    )
+
+
+class EventWatcherRequest(BaseModel):
+    realms: Dict[str, WatchlistData]
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "realms": {
+                    "Doomhowl": {
+                        "watchlist": {
+                            "Furioustea": {"online": True, "level": 23, "class": "warrior", "zone": "Thunder Bluff"}
+                        }
+                    }
+                }
+            }
+        }
     )
 
 
