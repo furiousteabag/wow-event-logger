@@ -65,13 +65,13 @@ local function UpdateWatchedCharactersData()
     end
 end
 
-local function UpdateCurrentCharacter()
+local function UpdateCurrentCharacter(newLevel)
     local currentRealm = GetRealmName()
     local characterName = UnitName("player")
     EventWatcherDump.realms[currentRealm].watchlist[characterName] = {
-        level = UnitLevel("player"),
+        level = newLevel or UnitLevel("player"),
         class = UnitClass("player"),
-        zone = GetRealZoneText(),
+        zone = GetZoneText(),
         online = true
     }
 end
@@ -140,7 +140,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
 
     elseif event == "PLAYER_LEVEL_UP" then
         local newLevel = ...
-        UpdateCurrentCharacter()
+        UpdateCurrentCharacter(newLevel)
         print("|cff00ff00EventWatcher:|r You reached level " .. newLevel)
 
     elseif event == "GUILD_ROSTER_UPDATE" then
