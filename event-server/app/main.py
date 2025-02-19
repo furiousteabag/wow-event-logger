@@ -67,7 +67,6 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
                         )
                         should_notify = existing_char.level < char_info.level
                 else:
-                    # Create new character
                     new_char = CharacterCreate(
                         **{
                             "realm": realm_name,
@@ -82,7 +81,6 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
                     should_notify = True
 
                 if should_notify and updated_char:
-                    # Get watchers and group character updates by chat_id
                     watchers = await crud_character_watch.get_by_character(session, realm=realm_name, name=char_name)
                     char_update = format_character(updated_char)
 
