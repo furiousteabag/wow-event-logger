@@ -26,6 +26,12 @@ class CRUDCharacterWatch(CRUDBase[CharacterWatch, CharacterWatchCreate, Characte
             return None
         return self.model(**deleted[0])
 
+    async def delete_by_chat(self, db: AsyncClient, *, chat_id: int) -> list[CharacterWatch]:
+        """Delete all character watches for a specific chat"""
+        data, count = await db.table(self.table_name).delete().eq("chat_id", chat_id).execute()
+        _, deleted = data
+        return [self.model(**item) for item in deleted]
+
     async def get_by_chat(self, db: AsyncClient, *, chat_id: int) -> list[CharacterWatch]:
         """Get all character watches for a specific chat"""
         data, count = await db.table(self.table_name).select("*").eq("chat_id", chat_id).execute()
