@@ -1,0 +1,12 @@
+services:
+  platform:
+    container_name: event-server
+    image: ${IMAGE_NAME:-event-server}
+    build:
+      context: .
+    ports:
+      - "9999:80"
+    env_file:
+      - .env
+    restart: always
+    tty: true
