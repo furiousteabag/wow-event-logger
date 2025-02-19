@@ -2,7 +2,7 @@ env:
   PROJECT_NAME: event-server
   PROJECT_URL: wow.asmirnov.xyz
 
-name: Build and Deploy
+name: Build and Deploy Event Logger
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
       - master
       - main
     paths: 
-      - "${{ env.PROJECT_NAME }}/**"
+      - "event-server/**"
 
 permissions:
   contents: read
