@@ -58,7 +58,7 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           port: ${{ secrets.SERVER_PORT }}
           source: "${{ env.PROJECT_NAME }}/docker-compose.yml"
-          target: "/${{ secrets.SERVER_USERNAME }}/${{ env.PROJECT_NAME }}/"
+          target: "/${{ secrets.SERVER_USERNAME }}/"
       - name: Deploy server using Docker Compose
         uses: appleboy/ssh-action@v1.0.3
         with:
