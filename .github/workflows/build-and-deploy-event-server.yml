@@ -45,8 +45,8 @@ jobs:
         id: deployment
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
-          environment: production
-          description: "Deploying to production environment"
+          environment: "${{ env.PROJECT_NAME }}-prod"
+          description: "Deploying ${{ env.PROJECT_NAME }} to production"
           initial-status: in_progress
       - name: Check out code
         uses: actions/checkout@v4
