@@ -71,7 +71,7 @@ local function UpdateCurrentCharacter(newLevel)
     EventWatcherDump.realms[currentRealm].watchlist[characterName] = {
         level = newLevel or UnitLevel("player"),
         class = UnitClass("player"),
-        zone = GetZoneText(),
+        zone = GetZoneText() or GetRealZoneText(),
         online = true
     }
 end
