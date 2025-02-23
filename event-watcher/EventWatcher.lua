@@ -123,11 +123,9 @@ SlashCmdList["EWLIST"] = function(msg)
     end
     print("|cff00ff00EventWatcher:|r Current watchlist for realm " .. currentRealm .. ":")
     for name, data in pairs(watchlist) do
-        if name ~= UnitName("player") then
-            local status = data.online and "Online" or "Offline"
-            print(string.format("%s: Level %d %s (%s) - %s",
-                name, data.level, data.class, status, data.zone))
-        end
+        local status = data.online and "Online" or "Offline"
+        print(string.format("%s: Level %d %s (%s) - %s",
+            name, data.level, data.class, status, data.zone))
     end
 end
 
