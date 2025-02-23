@@ -98,11 +98,6 @@ end
 SlashCmdList["EWREMOVE"] = function(msg)
     if msg ~= "" then
         local currentRealm = GetRealmName()
-        local characterName = UnitName("player")
-        if msg == characterName then
-            print("|cffff0000EventWatcher:|r Cannot remove yourself from watchlist.")
-            return
-        end
         if EventWatcherDump.realms[currentRealm].watchlist[msg] then
             EventWatcherDump.realms[currentRealm].watchlist[msg] = nil
             print("|cff00ff00EventWatcher:|r Removed " .. msg .. " from watchlist.")
