@@ -45,7 +45,7 @@ jobs:
         id: deployment
         with:
           token: "${{ secrets.GITHUB_TOKEN }}"
-          environment: "${{ env.PROJECT_NAME }}-prod"
+          environment: "${{ env.PROJECT_NAME }}"
           description: "Deploying ${{ env.PROJECT_NAME }} to production"
           initial-status: in_progress
       - name: Check out code
