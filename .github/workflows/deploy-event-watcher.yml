@@ -1,0 +1,67 @@
+env:
+  PROJECT_NAME: event-watcher
+  PROJECT_URL: curseforge.com/wow/addons/eventwatcher
+  ADDON_NAME: EventWatcher
+  PROJECT_ID: 1206357
+  GAME_VERSIONS: "1.15.6"
+
+name: Upload Addon to CurseForge
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths: 
+      - "event-watcher/**"
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create GitHub Deploymen
+        uses: chrnorm/deployment-action@v2
+        id: deployment
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          environment: "${{ env.PROJECT_NAME }}"
+          description: "Deploying ${{ env.PROJECT_NAME }} to production"
+          initial-status: in_progress
+      - uses: actions/checkout@v3
+      - name: Get short commit hash
+        id: commit_info
+        run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Prepare Addon Zip
+        run: |
+          mkdir ${{ env.ADDON_NAME }}
+          cp ${{ env.PROJECT_NAME }}/*.lua ${{ env.PROJECT_NAME }}/*.toc ${{ env.ADDON_NAME }}/
+          zip -r "${{ env.ADDON_NAME }}-${{ steps.commit_info.outputs.hash }}.zip" "${{ env.PROJECT_NAME }}"
+      - name: Upload to CurseForge
+        uses: itsmeow/curseforge-upload@v3
+        with:
+          token: ${{ secrets.CURSEFORGE_API_TOKEN }}
+          project_id: ${{ env.PROJECT_ID }}
+          game_endpoint: "wow"
+          file_path: "${{ env.ADDON_NAME }}-${{ steps.commit_info.outputs.hash }}.zip"
+          game_versions: ${{ env.GAME_VERSIONS }}
+          # Optional fields:
+          # release_type: "release"           # "alpha", "beta", or "release"
+          # changelog: "Automated upload from GitHub Actions"
+          # changelog_type: "markdown"        # "text", "html", or "markdown"
+          # game_versions: "Retail,10.0.5"    # or numeric IDs or a comma-delimited list
+          # relations: "another-addon:requiredDependency"
+      - name: Update server deployment status (success)
+        if: ${{ success() }}
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: "success"
+          environment-url: https://${{ env.PROJECT_URL }}/
+      - name: Update server deployment status (failure)
+        if: ${{ failure() }}
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+          state: "failure"
