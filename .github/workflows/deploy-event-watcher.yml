@@ -33,9 +33,8 @@ jobs:
         run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Prepare Addon Zip
         run: |
-          mkdir ${{ env.ADDON_NAME }}
-          cp ${{ env.PROJECT_NAME }}/*.lua ${{ env.PROJECT_NAME }}/*.toc ${{ env.ADDON_NAME }}/
-          zip -r "${{ env.ADDON_NAME }}-${{ steps.commit_info.outputs.hash }}.zip" "${{ env.PROJECT_NAME }}"
+          mv "${{env.PROJECT_NAME}}" "${{env.ADDON_NAME}}"
+          zip -r "${{ env.ADDON_NAME }}-${{ steps.commit_info.outputs.hash }}.zip" "${{ env.ADDON_NAME }}"
       - name: Upload to CurseForge
         uses: itsmeow/curseforge-upload@v3
         with:
