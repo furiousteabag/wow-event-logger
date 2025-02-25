@@ -119,7 +119,12 @@ SlashCmdList["EWADD"] = function(name)
         if UpdateCharactersData({name})[name] then
             print("|cff00ff00EventWatcher:|r Added " .. GetFormattedPlayerLink(name) .. " to watchlist.")
         else
-            print("|cffff0000EventWatcher:|r Character " .. name .. " not found in guild.")
+            local guildName = GetGuildInfo("player")
+            if guildName then
+                print("|cffff0000EventWatcher:|r Character " .. name .. " not found in guild " .. string.format("<|cff00ff00%s|r>", guildName) .. ".")
+            else
+                print("|cffff0000EventWatcher:|r Cannot add character " .. name .. " to watchlist because you are not in a guild.")
+            end
         end
     else
         print("|cffff0000EventWatcher:|r Please provide a character name.")
