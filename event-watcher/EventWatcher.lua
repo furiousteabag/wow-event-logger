@@ -11,6 +11,35 @@ SLASH_EWREMOVE1 = "/ewremove"
 SLASH_EWLIST1 = "/ewlist"
 
 
+local crossIcon = "\124TInterface\\TargetingFrame\\UI-RaidTargetingIcon_7:0\124t"
+local triangleIcon = "\124TInterface\\TargetingFrame\\UI-RaidTargetingIcon_4:0\124t"
+
+
+local function PreprocessName(name)
+    return string.upper(string.sub(name, 1, 1)) .. string.lower(string.sub(name, 2))
+end
+
+local function GetFormattedPlayerLink(name)
+
+    local data = EventWatcherDump.realms[GetRealmName()].watchlist[name]
+    local level, class, zone, online = data.level, data.class, data.zone, data.online
+
+    local status = online and triangleIcon or crossIcon
+
+    local levelColor = GetQuestDifficultyColor(level)
+    local levelColorCode = string.format("|cff%02x%02x%02x",
+        levelColor.r * 255, levelColor.g * 255, levelColor.b * 255)
+    local coloredLevel = levelColorCode .. level .. "|r"
+
+    local classColor = RAID_CLASS_COLORS[string.upper(class)]
+    local colorCode = classColor and string.format("|cff%02x%02x%02x",
+        classColor.r * 255, classColor.g * 255, classColor.b * 255) or "|cffffffff"
+    local coloredName = colorCode .. name .. "|r"
+
+    local characterLink = GetPlayerLink(name, string.format("%s:%s", coloredLevel, coloredName))
+    return string.format("%s[%s]", status, characterLink)
+end
+
 local function InitializeStorage()
     if not EventWatcherDump then
         EventWatcherDump = {}
@@ -57,9 +86,7 @@ local function UpdateWatchedCharactersData()
     if EventWatcherDump.realms[currentRealm] and EventWatcherDump.realms[currentRealm].watchlist then
         local characterNames = {}
         for characterName, _ in pairs(EventWatcherDump.realms[currentRealm].watchlist) do
-            if characterName ~= UnitName("player") then
-                table.insert(characterNames, characterName)
-            end
+            table.insert(characterNames, characterName)
         end
         if #characterNames > 0 then
             UpdateCharactersData(characterNames)
@@ -79,41 +106,43 @@ local function UpdateCurrentCharacter(newLevel)
 end
 
 
-SlashCmdList["EWADD"] = function(msg)
-    if msg ~= "" then
+SlashCmdList["EWADD"] = function(name)
+    if name ~= "" then
+        name = PreprocessName(name)
         local currentRealm = GetRealmName()
 
-        if EventWatcherDump.realms[currentRealm].watchlist[msg] then
-            print("|cffff0000EventWatcher:|r Character " .. msg .. " is already in watchlist.")
+        if EventWatcherDump.realms[currentRealm].watchlist[name] then
+            print("|cffff0000EventWatcher:|r Character " .. GetFormattedPlayerLink(name) .. " is already in watchlist.")
             return
         end
 
-        local found = UpdateCharactersData({msg})
-        if found[msg] then
-            print("|cff00ff00EventWatcher:|r Added " .. msg .. " to watchlist.")
+        if UpdateCharactersData({name})[name] then
+            print("|cff00ff00EventWatcher:|r Added " .. GetFormattedPlayerLink(name) .. " to watchlist.")
         else
-            print("|cffff0000EventWatcher:|r Character " .. msg .. " not found in guild.")
+            print("|cffff0000EventWatcher:|r Character " .. name .. " not found in guild.")
         end
     else
         print("|cffff0000EventWatcher:|r Please provide a character name.")
     end
 end
 
-SlashCmdList["EWREMOVE"] = function(msg)
-    if msg ~= "" then
+SlashCmdList["EWREMOVE"] = function(name)
+    if name ~= "" then
+        name = PreprocessName(name)
         local currentRealm = GetRealmName()
-        if EventWatcherDump.realms[currentRealm].watchlist[msg] then
-            EventWatcherDump.realms[currentRealm].watchlist[msg] = nil
-            print("|cff00ff00EventWatcher:|r Removed " .. msg .. " from watchlist.")
+        if EventWatcherDump.realms[currentRealm].watchlist[name] then
+            local formattedPlayerLink = GetFormattedPlayerLink(name)
+            EventWatcherDump.realms[currentRealm].watchlist[name] = nil
+            print("|cff00ff00EventWatcher:|r Removed " .. formattedPlayerLink .. " from watchlist.")
         else
-            print("|cffff0000EventWatcher:|r Character " .. msg .. " not found in watchlist.")
+            print("|cffff0000EventWatcher:|r Character " .. name .. " not found in watchlist.")
         end
     else
         print("|cffff0000EventWatcher:|r Please provide a character name.")
     end
 end
 
-SlashCmdList["EWLIST"] = function(msg)
+SlashCmdList["EWLIST"] = function()
     local currentRealm = GetRealmName()
     local watchlist = EventWatcherDump.realms[currentRealm].watchlist
     if not watchlist or next(watchlist) == nil then
@@ -122,11 +151,11 @@ SlashCmdList["EWLIST"] = function(msg)
     end
     print("|cff00ff00EventWatcher:|r Current watchlist for realm " .. currentRealm .. ":")
     for name, data in pairs(watchlist) do
-        local status = data.online and "Online" or "Offline"
-        print(string.format("%s: Level %d %s (%s) - %s",
-            name, data.level, data.class, status, data.zone))
+        local formattedPlayerLink = GetFormattedPlayerLink(name)
+        print(string.format("%s %s", formattedPlayerLink, data.zone))
     end
 end
+
 
 frame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
@@ -134,12 +163,10 @@ frame:SetScript("OnEvent", function(self, event, ...)
         UpdateCurrentCharacter()
         GuildRoster()
         print("|cff00ff00EventWatcher:|r Initialized successfully for realm " .. currentRealm)
-
     elseif event == "PLAYER_LEVEL_UP" then
         local newLevel = ...
         UpdateCurrentCharacter(newLevel)
         print("|cff00ff00EventWatcher:|r You reached level " .. newLevel)
-
     elseif event == "GUILD_ROSTER_UPDATE" then
         UpdateWatchedCharactersData()
     end
