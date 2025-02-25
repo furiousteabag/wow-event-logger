@@ -154,8 +154,19 @@ SlashCmdList["EWLIST"] = function()
         print("|cff00ff00EventWatcher:|r Watchlist is empty.")
         return
     end
-    print("|cff00ff00EventWatcher:|r Current watchlist for realm " .. currentRealm .. ":")
+
+    local sortedWatchList = {}
     for name, data in pairs(watchlist) do
+        table.insert(sortedWatchList, {name = name, data = data})
+    end
+    table.sort(sortedWatchList, function(a, b)
+        return (a.data.level or 0) > (b.data.level or 0)
+    end)
+
+    print("|cff00ff00EventWatcher:|r Watchlist for " .. currentRealm .. ":")
+    -- for name, data in pairs(watchlist) do
+    for _, entry in ipairs(sortedWatchList) do
+        local name, data = entry.name, entry.data
         local formattedPlayerLink = GetFormattedPlayerLink(name)
         print(string.format("%s %s", formattedPlayerLink, data.zone))
     end
