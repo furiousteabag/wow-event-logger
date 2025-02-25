@@ -5,9 +5,11 @@ frame:RegisterEvent("PLAYER_LEVEL_UP")
 frame:RegisterEvent("PLAYER_LOGOUT")
 frame:RegisterEvent("GUILD_ROSTER_UPDATE")
 
+
 SLASH_EWADD1 = "/ewadd"
 SLASH_EWREMOVE1 = "/ewremove"
 SLASH_EWLIST1 = "/ewlist"
+
 
 local function InitializeStorage()
     if not EventWatcherDump then
@@ -76,6 +78,7 @@ local function UpdateCurrentCharacter(newLevel)
     }
 end
 
+
 SlashCmdList["EWADD"] = function(msg)
     if msg ~= "" then
         local currentRealm = GetRealmName()
@@ -85,7 +88,8 @@ SlashCmdList["EWADD"] = function(msg)
             return
         end
 
-        if UpdateCharactersData({msg}) then
+        local found = UpdateCharactersData({msg})
+        if found[msg] then
             print("|cff00ff00EventWatcher:|r Added " .. msg .. " to watchlist.")
         else
             print("|cffff0000EventWatcher:|r Character " .. msg .. " not found in guild.")
