@@ -31,17 +31,23 @@ jobs:
       - name: Get short commit hash
         id: commit_info
         run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Set zip filename
+        id: zip_info
+        run: echo "filename=${{ env.ADDON_NAME }}-${{ steps.date.outputs.date }}-${{ steps.commit_info.outputs.hash }}.zip" >> $GITHUB_OUTPUT
       - name: Prepare Addon Zip
         run: |
           mv "${{env.PROJECT_NAME}}" "${{env.ADDON_NAME}}"
-          zip -r "${{ env.ADDON_NAME }}-${{ steps.commit_info.outputs.hash }}.zip" "${{ env.ADDON_NAME }}"
+          zip -r "${{ steps.zip_info.outputs.filename }}" "${{ env.ADDON_NAME }}"
       - name: Upload to CurseForge
         uses: itsmeow/curseforge-upload@v3
         with:
           token: ${{ secrets.CURSEFORGE_API_TOKEN }}
           project_id: ${{ env.PROJECT_ID }}
           game_endpoint: "wow"
-          file_path: "${{ env.ADDON_NAME }}-${{ steps.commit_info.outputs.hash }}.zip"
+          file_path: "${{ steps.zip_info.outputs.filename }}"
           game_versions: ${{ env.GAME_VERSIONS }}
           # Optional fields:
           # release_type: "release"           # "alpha", "beta", or "release"
