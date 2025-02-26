@@ -15,12 +15,41 @@ local crossIcon = "\124TInterface\\TargetingFrame\\UI-RaidTargetingIcon_7:0\124t
 local triangleIcon = "\124TInterface\\TargetingFrame\\UI-RaidTargetingIcon_4:0\124t"
 
 
+local function InitializeStorage()
+    if not EventWatcherDump then
+        EventWatcherDump = {}
+    end
+    if not EventWatcherDump.realms then
+        EventWatcherDump.realms = {}
+    end
+    local currentRealm = GetRealmName()
+    if not EventWatcherDump.realms[currentRealm] then
+        EventWatcherDump.realms[currentRealm] = {
+            watchlist = {}
+        }
+    end
+    return currentRealm
+end
+
+local function SyncDeathlogData(realmName)
+    for characterName, watchData in pairs(EventWatcherDump.realms[realmName].watchlist) do
+        local uniqueID = deathlog_data_map and deathlog_data_map[realmName] and deathlog_data_map[realmName][characterName]
+        if uniqueID then
+            local deathData = deathlog_data and deathlog_data[realmName] and deathlog_data[realmName][uniqueID]
+            if deathData then
+                watchData.died_at = deathData.date
+            else
+            end
+        else
+        end
+    end
+end
+
 local function PreprocessName(name)
     return string.upper(string.sub(name, 1, 1)) .. string.lower(string.sub(name, 2))
 end
 
 local function GetFormattedPlayerLink(name)
-
     local data = EventWatcherDump.realms[GetRealmName()].watchlist[name]
     local level, class, zone, online = data.level, data.class, data.zone, data.online
 
@@ -40,22 +69,6 @@ local function GetFormattedPlayerLink(name)
     return string.format("%s[%s]", status, characterLink)
 end
 
-local function InitializeStorage()
-    if not EventWatcherDump then
-        EventWatcherDump = {}
-    end
-    if not EventWatcherDump.realms then
-        EventWatcherDump.realms = {}
-    end
-    local currentRealm = GetRealmName()
-    if not EventWatcherDump.realms[currentRealm] then
-        EventWatcherDump.realms[currentRealm] = {
-            watchlist = {}
-        }
-    end
-    return currentRealm
-end
-
 local function UpdateCharactersData(characterNames)
     local currentRealm = GetRealmName()
     local numMembers = GetNumGuildMembers()
@@ -69,12 +82,16 @@ local function UpdateCharactersData(characterNames)
         local name, _, _, level, class, zone, _, _, online = GetGuildRosterInfo(i)
         name = string.match(name, "([^-]+)")  -- Remove realm name if present
         if watchedCharLookup[name] then
+            local died_at = EventWatcherDump.realms[currentRealm].watchlist[name] and EventWatcherDump.realms[currentRealm].watchlist[name].died_at or nil
             EventWatcherDump.realms[currentRealm].watchlist[name] = {
                 level = level,
                 class = class,
                 zone = zone,
                 online = online
             }
+            if died_at then
+                EventWatcherDump.realms[currentRealm].watchlist[name].died_at = died_at
+            end
             foundCharacters[name] = true
         end
     end
@@ -97,12 +114,16 @@ end
 local function UpdateCurrentCharacter(newLevel)
     local currentRealm = GetRealmName()
     local characterName = UnitName("player")
+    local died_at = EventWatcherDump.realms[currentRealm].watchlist[characterName] and EventWatcherDump.realms[currentRealm].watchlist[characterName].died_at or nil
     EventWatcherDump.realms[currentRealm].watchlist[characterName] = {
         level = newLevel or UnitLevel("player"),
         class = UnitClass("player"),
         zone = GetZoneText() or GetRealZoneText(),
         online = true
     }
+    if died_at then
+        EventWatcherDump.realms[currentRealm].watchlist[characterName].died_at = died_at
+    end
 end
 
 
@@ -117,6 +138,7 @@ SlashCmdList["EWADD"] = function(name)
         end
 
         if UpdateCharactersData({name})[name] then
+            SyncDeathlogData(currentRealm)
             print("|cff00ff00EventWatcher:|r Added " .. GetFormattedPlayerLink(name) .. " to watchlist.")
         else
             local guildName = GetGuildInfo("player")
@@ -149,26 +171,50 @@ end
 
 SlashCmdList["EWLIST"] = function()
     local currentRealm = GetRealmName()
-    local watchlist = EventWatcherDump.realms[currentRealm].watchlist
+    local watchlist = EventWatcherDump and EventWatcherDump.realms and EventWatcherDump.realms[currentRealm] and EventWatcherDump.realms[currentRealm].watchlist
+
     if not watchlist or next(watchlist) == nil then
         print("|cff00ff00EventWatcher:|r Watchlist is empty.")
         return
     end
 
-    local sortedWatchList = {}
+    local aliveList = {}
+    local deadList = {}
+
     for name, data in pairs(watchlist) do
-        table.insert(sortedWatchList, {name = name, data = data})
+        if data.died_at then
+            table.insert(deadList, { name = name, data = data })
+        else
+            table.insert(aliveList, { name = name, data = data })
+        end
     end
-    table.sort(sortedWatchList, function(a, b)
+
+    local function SortByLevelDescending(a, b)
         return (a.data.level or 0) > (b.data.level or 0)
-    end)
+    end
+
+    table.sort(aliveList, SortByLevelDescending)
+    table.sort(deadList, SortByLevelDescending)
 
     print("|cff00ff00EventWatcher:|r Watchlist for " .. currentRealm .. ":")
-    -- for name, data in pairs(watchlist) do
-    for _, entry in ipairs(sortedWatchList) do
+
+    for _, entry in ipairs(aliveList) do
         local name, data = entry.name, entry.data
-        local formattedPlayerLink = GetFormattedPlayerLink(name)
-        print(string.format("%s %s", formattedPlayerLink, data.zone))
+        local formattedLink = GetFormattedPlayerLink(name)
+        local zone = data.zone or "Unknown Zone"
+        print(string.format("%s %s", formattedLink, zone))
+    end
+
+    if #deadList > 0 then
+        print("|cffff0000--- Dead Characters ---|r")
+        for _, entry in ipairs(deadList) do
+            local name, data = entry.name, entry.data
+            local formattedLink = GetFormattedPlayerLink(name)
+            local zone = data.zone or "Unknown Zone"
+            local diedTime = date("%m/%d/%y, %H:%M", data.died_at)
+            local diedMsg = string.format(" |cffff0000(%s)|r", diedTime)
+            print(string.format("%s %s%s", formattedLink, zone, diedMsg))
+        end
     end
 end
 
@@ -177,6 +223,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LOGIN" then
         local currentRealm = InitializeStorage()
         UpdateCurrentCharacter()
+        SyncDeathlogData(currentRealm)
         GuildRoster()
         print("|cff00ff00EventWatcher:|r Initialized successfully for realm " .. currentRealm)
     elseif event == "PLAYER_LEVEL_UP" then
