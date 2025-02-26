@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Generic, TypeVar
 
 from pydantic import BaseModel
@@ -15,18 +15,18 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self.table_name = table_name
 
     @staticmethod
-    def convert_datetime_to_int(data: Dict[str, Any]) -> Dict[str, Any]:
-        for key in ["created_at", "finished_at"]:
+    def convert_timestamp_to_datetime(data: Dict[str, Any]) -> Dict[str, Any]:
+        for key in ["created_at", "finished_at", "died_at"]:
             if key in data and data[key]:
-                data[key] = int(datetime.strptime(data[key], "%Y-%m-%dT%H:%M:%S.%f%z").timestamp())
+                data[key] = datetime.fromtimestamp(data[key]).astimezone(timezone.utc).isoformat()
         return data
 
     @staticmethod
-    def convert_float_to_datetime(obj: UpdateSchemaType) -> UpdateSchemaType:
-        for key in ["created_at", "finished_at"]:
-            if hasattr(obj, key) and getattr(obj, key):
-                setattr(obj, key, datetime.fromtimestamp(getattr(obj, key)).isoformat())
-        return obj
+    def convert_datetime_to_int(data: Dict[str, Any]) -> Dict[str, Any]:
+        for key in ["created_at", "finished_at", "died_at"]:
+            if key in data and data[key]:
+                data[key] = int(datetime.strptime(data[key], "%Y-%m-%dT%H:%M:%S.%f%z").timestamp())
+        return data
 
     async def create(self, db: AsyncClient, *, obj_in: CreateSchemaType) -> ModelType:
         """create by CreateSchemaType"""
@@ -46,7 +46,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     async def update(self, db: AsyncClient, *, id: str, obj_in: UpdateSchemaType) -> ModelType:
         """update by UpdateSchemaType"""
-        obj_in = self.convert_float_to_datetime(obj_in)
+        # obj_in = self.convert_timestamp_to_datetime(obj_in)
         data, count = await db.table(self.table_name).update(obj_in.model_dump()).eq("id", id).execute()
         _, updated = data
         updated[0] = self.convert_datetime_to_int(updated[0])

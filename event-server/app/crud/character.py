@@ -7,10 +7,10 @@ from app.schemas.character import Character, CharacterCreate, CharacterUpdate
 class CRUDCharacter(CRUDBase[Character, CharacterCreate, CharacterUpdate]):
     async def create(self, db: AsyncClient, *, obj_in: CharacterCreate) -> Character:
         # Convert class_ to class in the data sent to DB
-        db_data = obj_in.model_dump(by_alias=True)  # This will use "class" instead of "class_"
+        db_data = obj_in.model_dump(by_alias=True, exclude_unset=True)
+        db_data = self.convert_timestamp_to_datetime(db_data)
         data, _ = await db.table(self.table_name).insert(db_data).execute()
         _, created = data
-        created[0] = self.convert_datetime_to_int(created[0])
         return self.model(**created[0])
 
     async def get(self, db: AsyncClient, *, realm: str, name: str) -> Character | None:
@@ -23,6 +23,7 @@ class CRUDCharacter(CRUDBase[Character, CharacterCreate, CharacterUpdate]):
 
     async def update(self, db: AsyncClient, *, realm: str, name: str, obj_in: CharacterUpdate) -> Character | None:
         db_data = obj_in.model_dump(exclude_unset=True, by_alias=True)
+        db_data = self.convert_timestamp_to_datetime(db_data)
         data, _ = await db.table(self.table_name).update(db_data).eq("realm", realm).eq("name", name).execute()
         _, updated = data
         if not updated:
