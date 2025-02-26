@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional, TypedDict
 
@@ -27,6 +28,7 @@ class CharacterBase(BaseModel):
     class_: CharacterClass = Field(alias="class")
     online: bool = False
     zone: str
+    died_at: Optional[datetime] = None
 
     model_config = ConfigDict(
         use_attribute_docstrings=True,
@@ -46,7 +48,7 @@ class CharacterBase(BaseModel):
 
 
 class CharacterCreate(CharacterBase):
-    pass
+    died_at: Optional[int] = None
 
 
 class Character(CharacterBase):
@@ -57,6 +59,7 @@ class CharacterUpdate(BaseModel):
     level: Optional[int] = None
     online: Optional[bool] = None
     zone: Optional[str] = None
+    died_at: Optional[int] = None
 
     model_config = ConfigDict(
         use_attribute_docstrings=True,
@@ -69,6 +72,7 @@ class CharacterEventData(BaseModel):
     level: int
     class_: CharacterClass = Field(alias="class")
     zone: str
+    died_at: Optional[int] = None
 
     model_config = ConfigDict(
         populate_by_name=True,
