@@ -95,7 +95,8 @@ CREATE TABLE IF NOT EXISTS "public"."character" (
     "level" integer NOT NULL,
     "class" "public"."character_class" NOT NULL,
     "online" boolean DEFAULT false NOT NULL,
-    "zone" "text" NOT NULL
+    "zone" "text" NOT NULL,
+    "died_at" timestamp with time zone
 );
 
 
