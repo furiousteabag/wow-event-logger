@@ -19,15 +19,16 @@ class_emojis: dict[CharacterClass, str] = {
 
 
 def format_character(character: Character | CharacterWatch) -> str:
-
     char_str = f"*{character.name}*"
     if isinstance(character, CharacterBase):
         status = "🟢Online" if character.online else "⭕Offline"
         class_emoji = class_emojis.get(character.class_, "🎮")
         zone_info = f"📍{character.zone}" if character.zone else ""
         display_class = character.class_.value.replace("_", " ").title()
-
-        char_str += f" \\| {character.level} {class_emoji} {display_class} \\|{zone_info}"
+        death_info = ""
+        if hasattr(character, "died_at") and character.died_at:
+            death_date = character.died_at.strftime("%Y\\-%m\\-%d")
+            death_info = f" \\| 💀{death_date}"
+        char_str += f" \\| {character.level} {class_emoji} {display_class} \\|{zone_info}{death_info}"
     char_str += f" \\| 🌍{character.realm.title()}"
-
     return char_str
