@@ -57,5 +57,20 @@ class CRUDCharacterWatch(CRUDBase[CharacterWatch, CharacterWatchCreate, Characte
         _, got = data
         return len(got) > 0
 
+    async def get(self, db: AsyncClient, *, chat_id: int, realm: str, name: str) -> CharacterWatch | None:
+        """Get a watch entry by chat_id, realm and name"""
+        data, count = (
+            await db.table(self.table_name)
+            .select("*")
+            .eq("chat_id", chat_id)
+            .eq("realm", realm)
+            .eq("name", name)
+            .execute()
+        )
+        _, got = data
+        if not got:
+            return None
+        return self.model(**got[0])
+
 
 crud_character_watch = CRUDCharacterWatch(CharacterWatch, "character_watch_chat_telegram")
