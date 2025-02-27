@@ -1,8 +1,8 @@
+name: Build and Deploy Event Logger
+
 env:
   PROJECT_NAME: event-server
   PROJECT_URL: wow.asmirnov.xyz
-
-name: Build and Deploy Event Logger
 
 on:
   push:
@@ -34,13 +34,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Push Docker image to registry
         run: |
-          docker tag ${{ env.PROJECT_NAME }}:latest ghcr.io/${{ github.repository }}:latest
-          docker push ghcr.io/${{ github.repository }}:latest
+          docker tag ${{ env.PROJECT_NAME }}:latest ghcr.io/${{ github.repository_owner }}/${{ env.PROJECT_NAME }}:latest
+          docker push ghcr.io/${{ github.repository_owner }}/${{ env.PROJECT_NAME }}:latest
   deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Create GitHub Deploymen
+      - name: Create GitHub Deployment
         uses: chrnorm/deployment-action@v2
         id: deployment
         with:
@@ -70,7 +70,7 @@ jobs:
           script: |
             set -x
             cd /${{ secrets.SERVER_USERNAME }}/${{ env.PROJECT_NAME }}/
-            echo "IMAGE_NAME=ghcr.io/${{ github.repository }}:latest" > .env
+            echo "IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/${{ env.PROJECT_NAME }}:latest" > .env
             echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
             echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
             echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
