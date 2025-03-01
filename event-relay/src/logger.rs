@@ -17,18 +17,15 @@ pub fn init_custom_logger() {
 
             let level = format!("{}{}\x1b[0m", level_color, level_str);
 
-            let module_path = record.module_path().unwrap_or("__main__");
             let file = record.file().unwrap_or("unknown");
             let line = record.line().unwrap_or(0);
-            let module_str = format!("\x1b[36m{}:{}:{}\x1b[0m", module_path, file, line);
+            // let module_path = record.module_path().unwrap_or("__main__");
+            // let module_str = format!("\x1b[36m{}:{}:{}\x1b[0m", module_path, file, line);
+            let module_str = format!("\x1b[36m{}:{}\x1b[0m", file, line);
 
             let message_str = format!("{}{}\x1b[0m", level_color, record.args());
 
-            writeln!(
-                buf,
-                "{} | {:<7} | {} - {}",
-                ts, level, module_str, message_str
-            )
+            writeln!(buf, "{} | {:<7} | {} - {}", ts, level, module_str, message_str)
         })
         .init();
 }
