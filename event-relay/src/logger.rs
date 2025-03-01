@@ -6,10 +6,7 @@ use std::io::Write;
 pub fn init_custom_logger() {
     Builder::from_env(Env::default().default_filter_or("info"))
         .format(|buf, record| {
-            let ts = format!(
-                "\x1b[32m{}\x1b[0m",
-                Local::now().format("%Y-%m-%d %H:%M:%S%.3f")
-            );
+            let ts = format!("\x1b[32m{}\x1b[0m", Local::now().format("%Y-%m-%d %H:%M:%S%.3f"));
             let (level_color, level_str) = match record.level() {
                 Level::Error => ("\x1b[1;31m", format!("{:<5}", record.level())),
                 Level::Warn => ("\x1b[1;33m", format!("{:<5}", record.level())),

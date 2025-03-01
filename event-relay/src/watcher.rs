@@ -21,8 +21,7 @@ pub fn monitor_events(wow_folder: &str, event_server_url: &str) {
     let client = Client::new();
 
     let (tx, rx) = channel();
-    let mut debouncer =
-        new_debouncer(Duration::from_secs(2), None, tx).expect("Failed to create debouncer");
+    let mut debouncer = new_debouncer(Duration::from_secs(2), None, tx).expect("Failed to create debouncer");
 
     let parent = event_watcher_path
         .parent()
@@ -113,8 +112,7 @@ fn find_event_watcher(wow_folder: &str) -> Option<PathBuf> {
         if let Ok(entry) = entry {
             if let Ok(file_type) = entry.file_type() {
                 if file_type.is_dir() {
-                    let event_watcher =
-                        entry.path().join("SavedVariables").join("EventWatcher.lua");
+                    let event_watcher = entry.path().join("SavedVariables").join("EventWatcher.lua");
                     if event_watcher.exists() {
                         info!("Found EventWatcher.lua at: {:?}", event_watcher);
                         return Some(event_watcher);
