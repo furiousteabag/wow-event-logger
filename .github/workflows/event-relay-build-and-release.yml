@@ -1,0 +1,141 @@
+name: event-relay | Build and Release
+
+env:
+  PROJECT_NAME: event-relay
+  PROJECT_URL: github.com/furiousteabag/wow-event-logger
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-deployment:
+    runs-on: ubuntu-latest
+    outputs:
+      deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+    steps:
+      - name: Create GitHub Deployment
+        uses: chrnorm/deployment-action@v2
+        id: deployment
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          environment: "${{ env.PROJECT_NAME }}"
+          description: "Deploying ${{ env.PROJECT_NAME }} to GitHub Releases"
+          initial-status: in_progress
+
+  build:
+    needs: create-deployment
+    name: build | ${{ matrix.target }} (${{ matrix.os }})
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest-large
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          target: ${{ matrix.target }}
+      
+      - name: Build release
+        run: |
+          cd ${{ env.PROJECT_NAME }}
+          cargo build --release --locked --target ${{ matrix.target }}
+      
+      - name: Extract binary name from Cargo.toml
+        id: extract_binary
+        shell: bash
+        run: |
+          cd ${{ env.PROJECT_NAME }}
+          # Use cargo metadata to get package name in JSON format
+          BINARY_NAME=$(cargo metadata --no-deps --format-version=1 | jq -r '.packages[0].name')
+          echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_OUTPUT
+          echo "Binary name extracted: $BINARY_NAME"
+      
+      - name: Package binary
+        shell: bash
+        run: |
+          cd ${{ env.PROJECT_NAME }}
+          # Windows needs different handling
+          if [[ "${{ matrix.os }}" == *"windows"* ]]; then
+            bin_name="${{ steps.extract_binary.outputs.BINARY_NAME }}.exe"
+          else
+            bin_name="${{ steps.extract_binary.outputs.BINARY_NAME }}"
+          fi
+          
+          # Version from tag (v1.2.3 → 1.2.3)
+          version=${GITHUB_REF#refs/tags/v}
+          archive_name="${{ steps.extract_binary.outputs.BINARY_NAME }}-v$version-${{ matrix.target }}"
+          
+          # Create folder with same name as the archive will have
+          mkdir -p "$archive_name"
+          
+          # Copy binary to the folder
+          cp "target/${{ matrix.target }}/release/$bin_name" "$archive_name/"
+          
+          # Create tarball with the folder inside
+          tar czvf "../$archive_name.tar.gz" "$archive_name"
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ steps.extract_binary.outputs.BINARY_NAME }}-v*-${{ matrix.target }}.tar.gz
+          
+      - name: Update deployment status (failure)
+        if: ${{ failure() }}
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          deployment-id: ${{ needs.create-deployment.outputs.deployment_id }}
+          state: "failure"
+          
+  release:
+      needs: [create-deployment, build]
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/download-artifact@v4
+          with:
+            path: artifacts
+            
+        - name: List files
+          run: find artifacts -type f | sort
+        
+        - name: Set release version
+          id: release_version
+          run: echo "VERSION=v${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            
+        - uses: softprops/action-gh-release@v2
+          with:
+            files: artifacts/**/*.tar.gz
+            body: "${{ steps.release_version.outputs.VERSION }}"
+            
+        - name: Update deployment status (success)
+          if: ${{ success() }}
+          uses: chrnorm/deployment-status@v2
+          with:
+            token: "${{ secrets.GITHUB_TOKEN }}"
+            deployment-id: ${{ needs.create-deployment.outputs.deployment_id }}
+            state: "success"
+            environment-url: https://${{ env.PROJECT_URL }}/releases/tag/${{ steps.release_version.outputs.VERSION }}
+            
+        - name: Update deployment status (failure)
+          if: ${{ failure() }}
+          uses: chrnorm/deployment-status@v2
+          with:
+            token: "${{ secrets.GITHUB_TOKEN }}"
+            deployment-id: ${{ needs.create-deployment.outputs.deployment_id }}
+            state: "failure"
