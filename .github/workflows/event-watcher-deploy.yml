@@ -1,11 +1,11 @@
+name: event-watcher | Upload to CurseForge
+
 env:
   PROJECT_NAME: event-watcher
   PROJECT_URL: curseforge.com/wow/addons/eventwatcher
   ADDON_NAME: EventWatcher
   PROJECT_ID: 1206357
   GAME_VERSIONS: "1.15.6"
-
-name: Upload Addon to CurseForge
 
 on:
   push:

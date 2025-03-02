@@ -1,4 +1,4 @@
-name: Build and Deploy Event Logger
+name: event-server | Build and Deploy
 
 env:
   PROJECT_NAME: event-server
