@@ -1,3 +1,4 @@
+use crate::config::FILE_TO_WATCH;
 use crate::networking;
 use crate::parser;
 use log::{error, info};
@@ -25,7 +26,7 @@ pub fn monitor_events(wow_folder: &str, event_server_url: &str) {
 
     let parent = event_watcher_path
         .parent()
-        .expect("EventWatcher.lua has no parent directory");
+        .expect(format!("{} has no parent directory", FILE_TO_WATCH).as_str());
     debouncer
         .watch(parent, RecursiveMode::NonRecursive)
         .unwrap_or_else(|_| {
@@ -84,7 +85,7 @@ pub fn monitor_events(wow_folder: &str, event_server_url: &str) {
         }
     }
 
-    info!("Stopped watching EventWatcher.lua");
+    info!("Stopped watching {}", FILE_TO_WATCH);
 }
 
 /// Find the first EventWatcher.lua file in the WoW directory structure.
@@ -112,9 +113,9 @@ fn find_event_watcher(wow_folder: &str) -> Option<PathBuf> {
         if let Ok(entry) = entry {
             if let Ok(file_type) = entry.file_type() {
                 if file_type.is_dir() {
-                    let event_watcher = entry.path().join("SavedVariables").join("EventWatcher.lua");
+                    let event_watcher = entry.path().join("SavedVariables").join(FILE_TO_WATCH);
                     if event_watcher.exists() {
-                        info!("Found EventWatcher.lua at: {:?}", event_watcher);
+                        info!("Found {} at: {:?}", FILE_TO_WATCH, event_watcher);
                         return Some(event_watcher);
                     }
                 }
@@ -122,6 +123,6 @@ fn find_event_watcher(wow_folder: &str) -> Option<PathBuf> {
         }
     }
 
-    error!("EventWatcher.lua not found in any account folder. Please ensure you install, enable, login and logout once. You can get the addon from the CurseForge page: https://www.curseforge.com/wow/addons/eventwatcher");
+    error!("{} not found in any account folder. Please ensure you install the addon, enable it, login to the game and logout once. You can get the addon from the CurseForge page: https://www.curseforge.com/wow/addons/eventwatcher", FILE_TO_WATCH);
     None
 }

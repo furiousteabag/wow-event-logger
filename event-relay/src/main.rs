@@ -12,12 +12,15 @@ fn main() {
 
     let cmd = Command::new("event-watcher")
         .version(env!("CARGO_PKG_VERSION"))
-        .about("Monitor EventWatcher.lua for changes and send updates to the server")
+        .about(format!(
+            "Monitor {} for changes and send updates to the server",
+            config::FILE_TO_WATCH
+        ))
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(
             Command::new("start")
-                .about("Start monitoring EventWatcher.lua for changes")
+                .about(format!("Start monitoring {} for changes", config::FILE_TO_WATCH))
                 .after_help(config::format_env_vars_help(&env_vars)),
         );
 

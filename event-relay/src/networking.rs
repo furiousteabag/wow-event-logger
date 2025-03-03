@@ -1,3 +1,4 @@
+use crate::config::FILE_TO_WATCH;
 use log::{error, info};
 use reqwest::blocking::Client;
 use serde_json::Value as JsonValue;
@@ -20,17 +21,17 @@ pub fn try_send_update(
     }
 
     if last_data.is_none() {
-        info!("Initial read of EventWatcher.lua, sending first update...");
+        info!("Initial read of {}, sending first update...", FILE_TO_WATCH);
         if send_data(event_server_url, client, current_data) {
             *last_data = Some(current_json);
         }
     } else if Some(&current_json) != last_data.as_ref() {
-        // info!("Detected changes in EventWatcher.lua, sending update...");
+        // info!("Detected changes in {}, sending update...", FILE_TO_WATCH);
         if send_data(event_server_url, client, current_data) {
             *last_data = Some(current_json);
         }
     } else {
-        info!("EventWatcher.lua was updated, but data is unchanged");
+        info!("{} was updated, but data is unchanged", FILE_TO_WATCH);
     }
 }
 

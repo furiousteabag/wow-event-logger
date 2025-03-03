@@ -3,6 +3,8 @@ use std::env;
 
 pub type EnvVars = HashMap<&'static str, (&'static str, Option<&'static str>)>;
 
+pub const FILE_TO_WATCH: &str = "EventWatcher.lua";
+
 pub fn init_env_vars() -> EnvVars {
     let mut vars = HashMap::new();
     vars.insert(
