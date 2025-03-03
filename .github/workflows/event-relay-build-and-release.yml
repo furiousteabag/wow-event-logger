@@ -2,7 +2,6 @@ name: event-relay | Build and Release
 
 env:
   PROJECT_NAME: event-relay
-  PROJECT_URL: github.com/furiousteabag/wow-event-logger
 
 on:
   push:
@@ -130,7 +129,7 @@ jobs:
             token: "${{ secrets.GITHUB_TOKEN }}"
             deployment-id: ${{ needs.create-deployment.outputs.deployment_id }}
             state: "success"
-            environment-url: https://${{ env.PROJECT_URL }}/releases/tag/${{ steps.release_version.outputs.VERSION }}
+            environment-url: https://github.com/${{ github.repository }}/releases/tag/${{ steps.release_version.outputs.VERSION }}
             
         - name: Update deployment status (failure)
           if: ${{ failure() }}
