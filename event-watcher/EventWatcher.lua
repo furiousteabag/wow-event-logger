@@ -83,11 +83,12 @@ local function UpdateCharactersData(characterNames)
         name = string.match(name, "([^-]+)")  -- Remove realm name if present
         if watchedCharLookup[name] then
             local died_at = EventWatcherDump.realms[currentRealm].watchlist[name] and EventWatcherDump.realms[currentRealm].watchlist[name].died_at or nil
+            local existingData = EventWatcherDump.realms[currentRealm].watchlist[name] or {}
             EventWatcherDump.realms[currentRealm].watchlist[name] = {
-                level = level,
-                class = class,
-                zone = zone,
-                online = online
+                level = level or existingData.level,
+                class = class or existingData.class,
+                zone = zone or existingData.zone,
+                online = online ~= nil and online or existingData.online
             }
             if died_at then
                 EventWatcherDump.realms[currentRealm].watchlist[name].died_at = died_at
@@ -115,10 +116,11 @@ local function UpdateCurrentCharacter(newLevel)
     local currentRealm = GetRealmName()
     local characterName = UnitName("player")
     local died_at = EventWatcherDump.realms[currentRealm].watchlist[characterName] and EventWatcherDump.realms[currentRealm].watchlist[characterName].died_at or nil
+    local existingData = EventWatcherDump.realms[currentRealm].watchlist[characterName] or {}
     EventWatcherDump.realms[currentRealm].watchlist[characterName] = {
         level = newLevel or UnitLevel("player"),
         class = UnitClass("player"),
-        zone = GetZoneText() or GetRealZoneText(),
+        zone = GetZoneText() or GetRealZoneText() or existingData.zone,
         online = true
     }
     if died_at then
@@ -206,7 +208,7 @@ SlashCmdList["EWLIST"] = function()
     end
 
     if #deadList > 0 then
-        print("|cffff0000--- Dead Characters ---|r")
+        print("|cffff0000--------------------------------------------------|r")
         for _, entry in ipairs(deadList) do
             local name, data = entry.name, entry.data
             local formattedLink = GetFormattedPlayerLink(name)
