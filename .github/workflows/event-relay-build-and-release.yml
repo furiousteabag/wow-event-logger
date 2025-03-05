@@ -65,6 +65,7 @@ jobs:
           echo "Binary name extracted: $BINARY_NAME"
       
       - name: Package binary
+        id: package_binary
         shell: bash
         run: |
           cd ${{ env.PROJECT_NAME }}
@@ -76,9 +77,10 @@ jobs:
           fi
           
           # Version from tag (v1.2.3 → 1.2.3)
-          version=${GITHUB_REF#refs/tags/v}
-          archive_name="${{ steps.extract_binary.outputs.BINARY_NAME }}-${{ matrix.target }}"
+          # version=${GITHUB_REF#refs/tags/v}
           # archive_name="${{ steps.extract_binary.outputs.BINARY_NAME }}-v$version-${{ matrix.target }}"
+          archive_name="${{ steps.extract_binary.outputs.BINARY_NAME }}-${{ matrix.target }}"
+          echo "ARCHIVE_NAME=$archive_name" >> $GITHUB_OUTPUT
           
           # Create folder with same name as the archive will have
           mkdir -p "$archive_name"
@@ -93,7 +95,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}
-          path: ${{ steps.extract_binary.outputs.BINARY_NAME }}-v*-${{ matrix.target }}.tar.gz
+          path: ${{ steps.package_binary.outputs.ARCHIVE_NAME }}.tar.gz
+          # path: ${{ steps.extract_binary.outputs.BINARY_NAME }}-v*-${{ matrix.target }}.tar.gz
           
       - name: Update deployment status (failure)
         if: ${{ failure() }}
