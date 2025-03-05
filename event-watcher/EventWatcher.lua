@@ -88,7 +88,7 @@ local function UpdateCharactersData(characterNames)
                 level = level or existingData.level,
                 class = class or existingData.class,
                 zone = zone or existingData.zone,
-                online = online ~= nil and online or existingData.online
+                online = (function() if online ~= nil then return online else return existingData.online end end)()
             }
             if died_at then
                 EventWatcherDump.realms[currentRealm].watchlist[name].died_at = died_at
