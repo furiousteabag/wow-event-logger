@@ -77,7 +77,8 @@ jobs:
           
           # Version from tag (v1.2.3 → 1.2.3)
           version=${GITHUB_REF#refs/tags/v}
-          archive_name="${{ steps.extract_binary.outputs.BINARY_NAME }}-v$version-${{ matrix.target }}"
+          archive_name="${{ steps.extract_binary.outputs.BINARY_NAME }}-${{ matrix.target }}"
+          # archive_name="${{ steps.extract_binary.outputs.BINARY_NAME }}-v$version-${{ matrix.target }}"
           
           # Create folder with same name as the archive will have
           mkdir -p "$archive_name"
