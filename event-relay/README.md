@@ -33,6 +33,7 @@ Description=WoW Event Relay Service
 Type=simple
 ExecStart=/usr/bin/wow-event-relay start
 Environment="WOWEVENTRELAY_WOW_FOLDER=%h/.local/share/wineprefixes/battlenet/drive_c/Program Files (x86)/World of Warcraft"
+Environment=CLICOLOR_FORCE=1
 
 [Install]
 WantedBy=default.target
