@@ -6,6 +6,8 @@
 
 It is a part of the project that lets you monitor your friend's character progression in WoW in channels like Telegram, and by itself, `event-server` is not very useful. Full setup instructions are on the [project page](https://github.com/furiousteabag/wow-event-logger).
 
+![Image](https://github.com/user-attachments/assets/4d55b229-76bc-41ab-9059-e466da9c0b7c)
+
 ## Installation
 
 ### Telegram
