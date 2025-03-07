@@ -2,8 +2,9 @@ import os
 from typing import Annotated
 
 from fastapi import Depends
-from supabase import acreate_client
 from supabase.client import AsyncClient
+
+from supabase import acreate_client
 
 supabase_client: AsyncClient | None = None
 

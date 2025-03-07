@@ -113,7 +113,7 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
 
         for chat_id, char_updates in level_up_notifications.items():
             if char_updates:
-                message = "🎉 LEVEL UP\\! 🎉\n\n" + "\n".join(f"• {update}" for update in char_updates)
+                message = "🎉 LEVEL UP\\! 🎉\n\n" + "\n".join(f"{update}" for update in char_updates)
                 logger.info(f"Sending level up message to chat_id: {chat_id}")
                 try:
                     await bot.bot.send_message(chat_id=chat_id, text=message, parse_mode="MarkdownV2")
@@ -122,7 +122,7 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
 
         for chat_id, char_updates in death_notifications.items():
             if char_updates:
-                message = "☠️ DEATH ☠️\n\n" + "\n".join(f"• {update}" for update in char_updates)
+                message = "☠️ DEATH ☠️\n\n" + "\n".join(f"{update}" for update in char_updates)
                 logger.info(f"Sending death message to chat_id: {chat_id}")
                 try:
                     await bot.bot.send_message(chat_id=chat_id, text=message, parse_mode="MarkdownV2")

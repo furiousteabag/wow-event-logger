@@ -18,17 +18,24 @@ class_emojis: dict[CharacterClass, str] = {
 }
 
 
-def format_character(character: Character | CharacterWatch) -> str:
-    char_str = f"*{character.name}*"
+def format_character(character: Character | CharacterWatch, include_realm: bool = True) -> str:
+    name = character.name
+    formatted_name = f"*{name}*"
+
     if isinstance(character, CharacterBase):
-        status = "🟢Online" if character.online else "⭕Offline"
         class_emoji = class_emojis.get(character.class_, "🎮")
-        zone_info = f"📍{character.zone}" if character.zone else ""
         display_class = character.class_.value.replace("_", " ").title()
+        zone_info = f"📍{character.zone}" if character.zone else ""
+        status = "🟢Online" if character.online else "⭕Offline"
         death_info = ""
         if hasattr(character, "died_at") and character.died_at:
             death_date = character.died_at.strftime("%Y\\-%m\\-%d")
-            death_info = f" \\| 💀{death_date}"
-        char_str += f" \\| {character.level} {class_emoji} {display_class} \\|{zone_info}{death_info}"
-    char_str += f" \\| 🌍{character.realm.title()}"
+            death_info = f" 💀{death_date}"
+
+        char_str = f"{class_emoji}{character.level} {formatted_name} {zone_info}{death_info}"
+    else:
+        char_str = f"🎮 ? {formatted_name}"
+
+    if include_realm:
+        char_str += f" 🌍{character.realm.title()}"
     return char_str

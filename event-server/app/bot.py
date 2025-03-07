@@ -6,7 +6,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 from app.crud.character import crud_character
 from app.crud.character_watch import crud_character_watch
-from app.schemas.character_watch import CharacterWatchCreate
+from app.schemas.character_watch import CharacterWatch, CharacterWatchCreate
 from app.utils.db import get_db
 from app.utils.formatting import format_character
 
@@ -39,7 +39,7 @@ async def add_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if character_watch := await crud_character_watch.get(get_db(), chat_id=chat_id, realm=realm, name=name):
         await update.message.reply_text(
-            f"Character is already in the watchlist:\n\n• {format_character(character or character_watch)}",
+            f"Character is already in the watchlist:\n\n{format_character(character or character_watch)}",
             parse_mode=constants.ParseMode.MARKDOWN_V2,
         )
         return
@@ -48,7 +48,7 @@ async def add_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         get_db(), obj_in=CharacterWatchCreate(chat_id=chat_id, realm=realm, name=name)
     )
     await update.message.reply_text(
-        f"Added character to the watchlist:\n\n• {format_character(character or character_watch)}",
+        f"Added character to the watchlist:\n\n{format_character(character or character_watch)}",
         parse_mode=constants.ParseMode.MARKDOWN_V2,
     )
 
@@ -68,7 +68,7 @@ async def remove_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await update.message.reply_text(
-        f"Removed character from the watchlist:\n\n• {format_character(character or character_watch)}",
+        f"Removed character from the watchlist:\n\n{format_character(character or character_watch)}",
         parse_mode=constants.ParseMode.MARKDOWN_V2,
     )
 
@@ -81,39 +81,53 @@ async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Watchlist is empty!")
         return
 
-    living_characters = []
-    dead_characters = []
+    # Group characters by realm, then by living/dead status
+    realms = {}
 
     for watch in watches:
         character_data = await crud_character.get(get_db(), realm=watch.realm, name=watch.name)
-        if character_data:
-            # If the character has died_at value, add to dead list, otherwise to living list
-            if character_data.died_at:
-                dead_characters.append(format_character(character_data))
-            else:
-                living_characters.append(format_character(character_data))
-        else:
-            # If we don't have character data yet, assume they're alive
-            living_characters.append(format_character(watch))
 
-    # message = "Characters in the watchlist:\n\n"
+        if character_data:
+            # Use the actual character data if available
+            character = character_data
+            realm = character.realm
+            is_dead = bool(character.died_at)
+        else:
+            # If we don't have character data yet, use watch data and assume they're alive
+            character = watch
+            realm = watch.realm
+            is_dead = False
+
+        formatted_char = format_character(character, include_realm=False)
+
+        if realm not in realms:
+            realms[realm] = {"living": [], "dead": []}
+
+        level = character.level if not isinstance(character, CharacterWatch) else -1
+
+        if is_dead:
+            realms[realm]["dead"].append((level, formatted_char))
+        else:
+            realms[realm]["living"].append((level, formatted_char))
+
     message = ""
 
-    # Add living characters section if any exist
-    if living_characters:
-        message += "🌟 Living:\n"
-        for char in living_characters:
-            message += f"• {char}\n"
+    for realm in sorted(realms.keys()):
+        message += f"🌍 *{realm.title()}*\n"
 
-    # Add separator if both sections have characters
-    if living_characters and dead_characters:
+        if realms[realm]["living"]:
+            message += "  Living:\n"
+            for _, char in sorted(realms[realm]["living"], key=lambda x: x[0], reverse=True):
+                message += f"    {char}\n"
+
+        if realms[realm]["dead"]:
+            message += "  Dead:\n"
+            for _, char in sorted(realms[realm]["dead"], key=lambda x: x[0], reverse=True):
+                message += f"    {char}\n"
+
         message += "\n"
 
-    # Add dead characters section if any exist
-    if dead_characters:
-        message += "☠️ Dead:\n"
-        for char in dead_characters:
-            message += f"• {char}\n"
+    message = message.rstrip()
 
     await update.message.reply_text(message, parse_mode=constants.ParseMode.MARKDOWN_V2)
 
