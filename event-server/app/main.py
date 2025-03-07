@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -16,6 +17,7 @@ from app.schemas.character import CharacterCreate, CharacterUpdate, EventWatcher
 from app.schemas.common import ResponseModel
 from app.utils.db import SessionDep, initialize_supabase
 from app.utils.formatting import format_character
+from app.utils.scheduler import start_scheduler
 
 app = FastAPI()
 
@@ -24,16 +26,15 @@ app = FastAPI()
 async def lifespan(app: FastAPI):
     await setup_bot()
     await initialize_supabase()
+
+    scheduler_task = asyncio.create_task(start_scheduler(add_data))
+
     yield
+
     await bot.shutdown()
 
 
 app = FastAPI(lifespan=lifespan)
-
-
-@app.get("/", include_in_schema=False)
-async def root():
-    return {"message": "Yo! Check /docs for API documentation"}
 
 
 @app.post("/character", tags=["Characters"])
@@ -111,6 +112,7 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
                                 death_notifications[watcher.chat_id] = []
                             death_notifications[watcher.chat_id].append(char_update)
 
+        # Send level up notifications to each chat separately
         for chat_id, char_updates in level_up_notifications.items():
             if char_updates:
                 message = "🎉 LEVEL UP\\! 🎉\n\n" + "\n".join(f"{update}" for update in char_updates)
@@ -118,8 +120,12 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
                 try:
                     await bot.bot.send_message(chat_id=chat_id, text=message, parse_mode="MarkdownV2")
                 except Forbidden as e:
+                    logger.warning(f"Chat {chat_id} no longer accessible, removing watches: {e}")
                     await crud_character_watch.delete_by_chat(session, chat_id=chat_id)
+                except Exception as e:
+                    logger.error(f"Error sending level up notification to chat {chat_id}: {e}")
 
+        # Send death notifications to each chat separately
         for chat_id, char_updates in death_notifications.items():
             if char_updates:
                 message = "☠️ DEATH ☠️\n\n" + "\n".join(f"{update}" for update in char_updates)
@@ -127,9 +133,17 @@ async def add_data(session: SessionDep, request: EventWatcherRequest) -> Respons
                 try:
                     await bot.bot.send_message(chat_id=chat_id, text=message, parse_mode="MarkdownV2")
                 except Forbidden as e:
+                    logger.warning(f"Chat {chat_id} no longer accessible, removing watches: {e}")
                     await crud_character_watch.delete_by_chat(session, chat_id=chat_id)
+                except Exception as e:
+                    logger.error(f"Error sending death notification to chat {chat_id}: {e}")
 
         return {"status": "success", "message": "Character data processed successfully"}
     except Exception as e:
         logger.error(f"Error processing character data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return {"message": "Yo! Check /docs for API documentation"}

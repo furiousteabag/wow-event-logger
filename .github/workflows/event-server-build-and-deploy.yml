@@ -75,6 +75,8 @@ jobs:
             echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
             echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
             echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
+            echo "BATTLENET_CLIENT_ID=${{ secrets.BATTLENET_CLIENT_ID }}" >> .env
+            echo "BATTLENET_CLIENT_SECRET=${{ secrets.BATTLENET_CLIENT_SECRET }}" >> .env
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker-compose pull
             docker-compose up -d
