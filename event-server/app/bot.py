@@ -81,7 +81,7 @@ async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Watchlist is empty!")
         return
 
-    # Group characters by realm, then by living/dead status
+    # Group characters by realm, then by alive/dead status
     realms = {}
 
     for watch in watches:
@@ -101,23 +101,23 @@ async def list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         formatted_char = format_character(character, include_realm=False)
 
         if realm not in realms:
-            realms[realm] = {"living": [], "dead": []}
+            realms[realm] = {"alive": [], "dead": []}
 
         level = character.level if not isinstance(character, CharacterWatch) else -1
 
         if is_dead:
             realms[realm]["dead"].append((level, formatted_char))
         else:
-            realms[realm]["living"].append((level, formatted_char))
+            realms[realm]["alive"].append((level, formatted_char))
 
     message = ""
 
     for realm in sorted(realms.keys()):
         message += f"🌍 *{realm.title()}*\n"
 
-        if realms[realm]["living"]:
-            message += "  Living:\n"
-            for _, char in sorted(realms[realm]["living"], key=lambda x: x[0], reverse=True):
+        if realms[realm]["alive"]:
+            message += "  Alive:\n"
+            for _, char in sorted(realms[realm]["alive"], key=lambda x: x[0], reverse=True):
                 message += f"    {char}\n"
 
         if realms[realm]["dead"]:
