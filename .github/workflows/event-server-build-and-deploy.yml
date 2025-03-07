@@ -11,6 +11,7 @@ on:
       - main
     paths: 
       - "event-server/**"
+      - "!event-server/README.md"
 
 permissions:
   contents: read
