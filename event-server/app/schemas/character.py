@@ -1,13 +1,29 @@
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional, TypedDict
+from typing import Annotated, Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+class GameVersion(str, Enum):
+    CLASSIC = "classic"
+    TBC_CLASSIC = "tbc-classic"
+    WRATH_CLASSIC = "wrath-classic"
+    CATA_CLASSIC = "cata-classic"
+    RETAIL = "retail"
+
+
+class GameRegion(str, Enum):
+    US = "us"
+    EU = "eu"
+    KR = "kr"
+    TW = "tw"
+    CN = "cn"
+
+
 class CharacterClass(str, Enum):
-    DEATH_KNIGHT = "death_knight"
-    DEMON_HUNTER = "demon_hunter"
+    DEATH_KNIGHT = "death-knight"
+    DEMON_HUNTER = "demon-hunter"
     DRUID = "druid"
     EVOKER = "evoker"
     HUNTER = "hunter"
@@ -22,16 +38,20 @@ class CharacterClass(str, Enum):
 
 
 class CharacterBase(BaseModel):
+    version: GameVersion
+    region: GameRegion
     realm: str
     name: str
-    level: int
-    class_: CharacterClass = Field(alias="class")
-    online: bool = False
-    zone: str
+    class_: Optional[Annotated[CharacterClass, Field(alias="class")]] = None
+    level: Optional[int] = None
+    zone: Optional[str] = None
+    online: Optional[bool] = None
     died_at: Optional[datetime] = None
 
     model_config = ConfigDict(
         use_attribute_docstrings=True,
+        use_enum_values=True,
+        populate_by_name=True,
         json_schema_extra={
             "examples": [
                 {
@@ -41,6 +61,8 @@ class CharacterBase(BaseModel):
                     "class_": "warrior",
                     "online": True,
                     "zone": "Orgrimmar",
+                    "version": "classic",
+                    "region": "us",
                 }
             ]
         },
@@ -52,13 +74,15 @@ class CharacterCreate(CharacterBase):
 
 
 class Character(CharacterBase):
+    id: str
+
     model_config = ConfigDict(use_attribute_docstrings=True, from_attributes=True)
 
 
 class CharacterUpdate(BaseModel):
     level: Optional[int] = None
-    online: Optional[bool] = None
     zone: Optional[str] = None
+    online: Optional[bool] = None
     died_at: Optional[int] = None
 
     model_config = ConfigDict(
@@ -68,10 +92,10 @@ class CharacterUpdate(BaseModel):
 
 
 class CharacterEventData(BaseModel):
-    online: bool
-    level: int
-    class_: CharacterClass = Field(alias="class")
-    zone: str
+    class_: Optional[CharacterClass] = Field(alias="class", default=None)
+    level: Optional[int] = None
+    zone: Optional[str] = None
+    online: Optional[bool] = None
     died_at: Optional[int] = None
 
     model_config = ConfigDict(
@@ -81,40 +105,32 @@ class CharacterEventData(BaseModel):
 
     @field_validator("class_", mode="before")
     @classmethod
-    def transform_class(cls, value: str) -> str:
-        return value.lower().replace(" ", "_")
-
-
-class WatchlistData(BaseModel):
-    watchlist: Dict[str, CharacterEventData]
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "watchlist": {"Furioustea": {"online": True, "level": 23, "class": "warrior", "zone": "Thunder Bluff"}}
-            }
-        }
-    )
+    def transform_class(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return value.lower().replace(" ", "-")
+        # Handle cases where the value might be the enum itself
+        return value
 
 
 class EventWatcherRequest(BaseModel):
-    realms: Dict[str, WatchlistData]
+    region: GameRegion
+    version: GameVersion
+    realms: Dict[str, Dict[str, CharacterEventData]]
 
     model_config = ConfigDict(
+        use_enum_values=True,
+        populate_by_name=True,
         json_schema_extra={
             "example": {
+                "region": "us",
+                "version": "classic",
                 "realms": {
                     "Doomhowl": {
-                        "watchlist": {
-                            "Furioustea": {"online": True, "level": 23, "class": "warrior", "zone": "Thunder Bluff"}
-                        }
+                        "Furioustea": {"online": True, "level": 23, "class": "warrior", "zone": "Thunder Bluff"}
                     }
-                }
+                },
             }
-        }
+        },
     )
-
-
-# class CharacterDefinition(TypedDict):
-#     realm: str
-#     name: str

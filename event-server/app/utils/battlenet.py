@@ -1,8 +1,28 @@
-from datetime import datetime
+import os
+from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 
 import aiohttp
+from loguru import logger
 from pydantic import BaseModel, HttpUrl
+
+from app.schemas.character import Character, CharacterBase, CharacterClass, GameRegion, GameVersion
+
+
+class Namespace(str, Enum):
+    PROFILE = "profile"
+    PROFILE_CLASSIC = "profile-classic"
+    PROFILE_CLASSIC1X = "profile-classic1x"
+
+
+namespace_map: dict[GameVersion, Namespace] = {
+    GameVersion.RETAIL: Namespace.PROFILE,
+    GameVersion.CLASSIC: Namespace.PROFILE_CLASSIC1X,
+    GameVersion.TBC_CLASSIC: Namespace.PROFILE_CLASSIC,
+    GameVersion.WRATH_CLASSIC: Namespace.PROFILE_CLASSIC,
+    GameVersion.CATA_CLASSIC: Namespace.PROFILE_CLASSIC,
+}
 
 
 class LocalizedString(BaseModel):
@@ -187,8 +207,8 @@ class CharacterProfile(BaseModel):
         return None
 
 
-class WoWProfileClient:
-    def __init__(self, client_id: str, client_secret: str, region: Literal["us", "eu", "kr", "tw", "cn"] = "us"):
+class WoWAPIClient:
+    def __init__(self, client_id: str, client_secret: str):
         """
         Initialize the World of Warcraft Profile API client.
 
@@ -199,16 +219,9 @@ class WoWProfileClient:
         """
         self.client_id = client_id
         self.client_secret = client_secret
-        self.region = region
         self.token = None
         self.token_expiry = None
         self.session = None
-
-        # Set the API host based on region
-        if region == "cn":
-            self.api_host = "gateway.battlenet.com.cn"
-        else:
-            self.api_host = f"{region}.api.blizzard.com"
 
     async def __aenter__(self):
         """Create session when entering async context"""
@@ -221,7 +234,7 @@ class WoWProfileClient:
             await self.session.close()
             self.session = None
 
-    async def _get_access_token(self) -> str:
+    async def _get_access_token(self, region: GameRegion) -> str:
         """
         Get an access token from the Blizzard API.
 
@@ -235,7 +248,7 @@ class WoWProfileClient:
         if not self.session:
             self.session = aiohttp.ClientSession()
 
-        token_url = f"https://{self.region}.battle.net/oauth/token"
+        token_url = f"https://{region.value}.battle.net/oauth/token"
 
         auth = aiohttp.BasicAuth(self.client_id, self.client_secret)
         async with self.session.post(token_url, data={"grant_type": "client_credentials"}, auth=auth) as response:
@@ -249,85 +262,101 @@ class WoWProfileClient:
 
     async def get_character_profile(
         self,
-        realm_slug: str,
-        character_name: str,
-        namespace_type: Literal["profile", "profile-classic1x"] = "profile",
+        namespace: Namespace,
+        region: GameRegion,
+        realm: str,
+        name: str,
     ) -> CharacterProfile:
-        """
-        Get a character's profile information asynchronously.
+        access_token = await self._get_access_token(region)
+        api_host = f"{region.value}.api.blizzard.com" if region != GameRegion.CN else "gateway.battlenet.com.cn"
 
-        Args:
-            realm_slug: The slug of the character's realm
-            character_name: The name of the character (case-insensitive)
-            namespace_type: The namespace type to use (profile for retail, profile-classic1x for Classic)
-
-        Returns:
-            CharacterProfile: The character profile data
-        """
-        access_token = await self._get_access_token()
-
-        # Lowercase the character name for the API
-        character_name = character_name.lower()
-
-        # Construct the API URL
-        url = f"https://{self.api_host}/profile/wow/character/{realm_slug}/{character_name}"
-
-        # Set up the headers and parameters
+        url = f"https://{api_host}/profile/wow/character/{realm.lower()}/{name.lower()}"
         headers = {"Authorization": f"Bearer {access_token}"}
-        params = {"namespace": f"{namespace_type}-{self.region}", "locale": "en_US"}
+        params = {"namespace": f"{namespace.value}-{region.value}", "locale": "en_US"}
 
-        # Create a session if none exists
         if not self.session:
             self.session = aiohttp.ClientSession()
 
-        # Make the request
         async with self.session.get(url, headers=headers, params=params) as response:
             response.raise_for_status()
             data = await response.json()
 
         try:
-            # Parse the response into our Pydantic model
             return CharacterProfile.model_validate(data)
         except Exception as e:
-            # If validation fails, print detailed error info to help debug
-            print(f"Validation error for character {character_name}: {e}")
-            print(f"Problematic data sample: {str(data)[:500]}...")  # Print first 500 chars of data
+            logger.error(f"Validation error for character {name}: {e}")
+            logger.error(f"Problematic data sample: {str(data)[:500]}...")
             raise
 
-    async def get_guild_roster(
-        self,
-        realm_slug: str,
-        guild_slug: str,
-        namespace_type: Literal["profile", "profile-classic1x"] = "profile",
-    ) -> GuildRoster:
-        """
-        Get a guild's roster information asynchronously.
+    async def get_character(
+        self, version: GameVersion, region: GameRegion, realm: str, name: str
+    ) -> CharacterBase | None:
+        version = GameVersion(version) if type(version) == str else version
+        region = GameRegion(region) if type(region) == str else region
+        namespace = namespace_map[version]
+        try:
+            profile = await self.get_character_profile(namespace, region, realm, name)
+        except Exception as e:
+            logger.error(f"Error fetching character {name} from Battle.net: {e}")
+            return None
+        character = CharacterBase(
+            region=region,
+            version=version,
+            realm=realm,
+            name=name,
+            class_=CharacterClass(profile.get_class_name().lower().replace(" ", "-")),
+            level=profile.level,
+        )
+        if profile.is_ghost:
+            # character.died_at = datetime.fromtimestamp(profile.last_login_timestamp // 1000).astimezone(timezone.utc)
+            character.died_at = datetime.fromtimestamp(profile.last_login_timestamp // 1000).astimezone(timezone.utc)
+        return character
 
-        Args:
-            realm_slug: The slug of the guild's realm
-            guild_slug: The slug of the guild (lowercase, spaces replaced with hyphens)
-            namespace_type: The namespace type to use (profile for retail, profile-classic1x for Classic)
+    # async def get_guild_roster(
+    #     self,
+    #     realm_slug: str,
+    #     guild_slug: str,
+    #     namespace_type: Literal["profile", "profile-classic1x"] = "profile",
+    # ) -> GuildRoster:
+    #     """
+    #     Get a guild's roster information asynchronously.
 
-        Returns:
-            GuildRoster: The guild roster data
-        """
-        access_token = await self._get_access_token()
+    #     Args:
+    #         realm_slug: The slug of the guild's realm
+    #         guild_slug: The slug of the guild (lowercase, spaces replaced with hyphens)
+    #         namespace_type: The namespace type to use (profile for retail, profile-classic1x for Classic)
 
-        # Construct the API URL
-        url = f"https://{self.api_host}/data/wow/guild/{realm_slug}/{guild_slug}/roster"
+    #     Returns:
+    #         GuildRoster: The guild roster data
+    #     """
+    #     access_token = await self._get_access_token()
 
-        # Set up the headers and parameters
-        headers = {"Authorization": f"Bearer {access_token}"}
-        params = {"namespace": f"{namespace_type}-{self.region}", "locale": "en_US"}
+    #     # Construct the API URL
+    #     url = f"https://{self.api_host}/data/wow/guild/{realm_slug}/{guild_slug}/roster"
 
-        # Create a session if none exists
-        if not self.session:
-            self.session = aiohttp.ClientSession()
+    #     # Set up the headers and parameters
+    #     headers = {"Authorization": f"Bearer {access_token}"}
+    #     params = {"namespace": f"{namespace_type}-{self.region}", "locale": "en_US"}
 
-        # Make the request
-        async with self.session.get(url, headers=headers, params=params) as response:
-            response.raise_for_status()
-            data = await response.json()
+    #     # Create a session if none exists
+    #     if not self.session:
+    #         self.session = aiohttp.ClientSession()
 
-        # Parse the response into our Pydantic model
-        return GuildRoster.model_validate(data)
+    #     # Make the request
+    #     async with self.session.get(url, headers=headers, params=params) as response:
+    #         response.raise_for_status()
+    #         data = await response.json()
+
+    #     # Parse the response into our Pydantic model
+    #     return GuildRoster.model_validate(data)
+
+
+battlenet_client_id = os.getenv("BATTLENET_CLIENT_ID")
+battlenet_client_secret = os.getenv("BATTLENET_CLIENT_SECRET")
+
+if not battlenet_client_id or not battlenet_client_secret:
+    logger.error("Battle.net credentials not set, skipping character updates")
+    raise ValueError("Battle.net credentials not set")
+
+
+wow_api_client = WoWAPIClient(battlenet_client_id, battlenet_client_secret)

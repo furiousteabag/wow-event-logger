@@ -18,23 +18,20 @@ class_emojis: dict[CharacterClass, str] = {
 }
 
 
-def format_character(character: Character | CharacterWatch, include_realm: bool = True) -> str:
+def format_character(character: Character, include_realm: bool = True) -> str:
     name = character.name
     formatted_name = f"*{name}*"
 
-    if isinstance(character, CharacterBase):
-        class_emoji = class_emojis.get(character.class_, "🎮")
-        display_class = character.class_.value.replace("_", " ").title()
-        zone_info = f"📍{character.zone}" if character.zone else ""
-        status = "🟢Online" if character.online else "⭕Offline"
-        death_info = ""
-        if hasattr(character, "died_at") and character.died_at:
-            death_date = character.died_at.strftime("%Y\\-%m\\-%d")
-            death_info = f" 💀{death_date}"
+    class_emoji = class_emojis.get(character.class_, "🎮") if character.class_ else "🎮"
+    display_class = character.class_.replace("_", " ").title() if character.class_ else ""
+    zone_info = f"📍{character.zone}" if character.zone else ""
+    status = "🟢Online" if character.online else "⭕Offline"
+    death_info = ""
+    if hasattr(character, "died_at") and character.died_at:
+        death_date = character.died_at.strftime("%Y\\-%m\\-%d")
+        death_info = f" 💀{death_date}"
 
-        char_str = f"{class_emoji}{character.level} {formatted_name} {zone_info}{death_info}"
-    else:
-        char_str = f"🎮 ? {formatted_name}"
+    char_str = f"{class_emoji}{character.level if character.level else '??'} {formatted_name} {zone_info}{death_info}"
 
     if include_realm:
         char_str += f" 🌍{character.realm.title()}"

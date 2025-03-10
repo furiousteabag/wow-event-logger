@@ -4,139 +4,136 @@ from typing import Dict, List, Tuple
 
 from loguru import logger
 
+from app.api.endpoints.character import upload_character_data
+from app.bot import bot
 from app.crud.character import crud_character
-from app.schemas.character import Character, CharacterEventData, EventWatcherRequest, WatchlistData
-from app.utils.battlenet import CharacterProfile, WoWProfileClient
+from app.crud.character_watch import crud_character_watch
+from app.schemas.character import Character, CharacterEventData, EventWatcherRequest, GameRegion, GameVersion
+from app.utils.battlenet import CharacterProfile, WoWAPIClient, wow_api_client
 from app.utils.db import get_db
-
-
-async def fetch_character_from_battlenet(client: WoWProfileClient, realm: str, name: str):
-    """Fetch a single character profile from Battle.net"""
-    try:
-        profile = await client.get_character_profile(realm.lower(), name.lower(), namespace_type="profile-classic1x")
-        return realm, name, profile, None
-    except Exception as e:
-        return realm, name, None, str(e)
 
 
 async def fetch_characters_from_battlenet():
     """
     Fetch all watched characters from the database and Battle.net,
-    and return them in the format expected by the /character endpoint
+    and return them in the format expected by the /character endpoint,
+    grouped by region and version
     """
-    battlenet_client_id = os.getenv("BATTLENET_CLIENT_ID")
-    battlenet_client_secret = os.getenv("BATTLENET_CLIENT_SECRET")
-
-    if not battlenet_client_id or not battlenet_client_secret:
-        logger.error("Battle.net credentials not set, skipping character updates")
-        return None
-
     try:
         session = get_db()
-        # Get all character watches
-        data, _ = await session.table("character_watch_chat_telegram").select("*").execute()
-        _, watches = data
-
-        # Group watches by character to avoid duplicate Battle.net API calls
-        unique_characters: set[tuple[str, str]] = set()
+        watches = await crud_character_watch.get_all(session)
+        unique_characters: set[str] = set()
         for watch in watches:
-            unique_characters.add((watch["realm"], watch["name"]))
+            unique_characters.add(watch.character_id)
 
         if not unique_characters:
             logger.info("No characters being watched, skipping update")
             return None
 
-        # Get existing characters from database
-        existing_characters: dict[tuple[str, str], Character] = {}
-        for realm, name in unique_characters:
-            char = await crud_character.get(session, realm=realm, name=name)
-            if char:
-                existing_characters[(realm, name)] = char
+        # Fetch character data from database in parallel
+        db_tasks = [crud_character.get_by_id(session, id=id) for id in unique_characters]
+        db_results = await asyncio.gather(*db_tasks)
+
+        # Filter out None results
+        existing_characters: list[Character] = [char for char in db_results if char]
 
         logger.info(f"Fetching {len(unique_characters)} characters from Battle.net")
 
-        # Prepare the request structure
-        realms: Dict[str, WatchlistData] = {}
+        # Fetch all character data from Battle.net
+        tasks = [
+            wow_api_client.get_character(realm=char.realm, name=char.name, version=char.version, region=char.region)
+            for char in existing_characters
+        ]
+        results = await asyncio.gather(*tasks)
 
-        # Fetch all character profiles concurrently
-        async with WoWProfileClient(battlenet_client_id, battlenet_client_secret) as client:
-            # Create tasks for all characters
-            tasks = [fetch_character_from_battlenet(client, realm, name) for realm, name in unique_characters]
+        # Group characters by region and version
+        grouped_data: Dict[Tuple[GameRegion, GameVersion], Dict[str, Dict[str, CharacterEventData]]] = {}
 
-            # Run all tasks concurrently
-            results = await asyncio.gather(*tasks)
+        for character_api in results:
+            if not character_api:
+                continue
 
-            # Process results
-            for realm, name, profile, error in results:
-                if error:
-                    logger.error(f"Error fetching character {realm}/{name}: {error}")
-                    continue
+            # Create the character event data
+            character_api_dump = character_api.model_dump()
+            character_api_dump["died_at"] = (
+                int(character_api_dump["died_at"].timestamp()) if character_api_dump["died_at"] else None
+            )
+            character_event_data = CharacterEventData(**character_api_dump)
 
-                # If this realm isn't in our realms dict yet, add it
-                if realm not in realms:
-                    realms[realm] = WatchlistData(watchlist={})
+            # Get the region and version
+            # Ensure these are proper GameRegion and GameVersion objects
+            region = character_api.region
+            version = character_api.version
+            realm = character_api.realm
+            name = character_api.name
 
-                # Get existing character for online status and zone
-                existing_char = existing_characters.get((realm, name))
+            # Create the group key - ensure we're using the enum values if they're not already
+            if isinstance(region, str):
+                try:
+                    region = GameRegion[region]
+                except KeyError:
+                    region = GameRegion.US  # Default fallback
 
-                # Convert class name to our enum format
-                class_name = profile.get_class_name().lower().replace(" ", "_")
+            if isinstance(version, str):
+                try:
+                    version = GameVersion[version]
+                except KeyError:
+                    version = GameVersion.CLASSIC  # Default fallback
 
-                # Use existing values for online and zone if available, otherwise defaults
-                online = False if existing_char is None else existing_char.online
-                zone = "Unknown" if existing_char is None else existing_char.zone
+            group_key = (region, version)
 
-                if existing_char.died_at:
-                    continue
+            # Initialize the group if it doesn't exist
+            if group_key not in grouped_data:
+                grouped_data[group_key] = {}
 
-                died_at = None
-                if profile.is_ghost:
-                    # Convert millisecond timestamp to seconds (UTC)
-                    died_at = profile.last_login_timestamp // 1000
+            # Initialize the realm if it doesn't exist
+            if realm not in grouped_data[group_key]:
+                grouped_data[group_key][realm] = {}
 
-                # Create character event data
-                # Using direct construction with correct field names
-                realms[realm].watchlist[name] = CharacterEventData(
-                    level=profile.level,
-                    class_=class_name,  # Use field name, not alias
-                    online=online,
-                    zone=zone,
-                    died_at=died_at,
-                )
+            # Add the character data
+            grouped_data[group_key][realm][name] = character_event_data
 
-            # Create the final request object
-            return EventWatcherRequest(realms=realms)
+        # Create request objects for each group
+        requests = []
+        for (region, version), realms in grouped_data.items():
+            request = EventWatcherRequest(region=region, version=version, realms=realms)
+            requests.append(request)
 
+        return requests
     except Exception as e:
         logger.error(f"Error preparing character update data: {e}")
         return None
 
 
-async def scheduled_character_update(update_endpoint):
-    """Call the character update endpoint with data from Battle.net"""
+async def scheduled_character_update():
+    """Call the character update endpoint with data from Battle.net for each region/version group"""
     try:
-        request_data = await fetch_characters_from_battlenet()
+        request_data_list = await fetch_characters_from_battlenet()
 
-        if request_data and request_data.realms:
-            # Call the update endpoint
-            logger.info("Calling character update endpoint with fetched data")
-            response = await update_endpoint(get_db(), request_data)
-            logger.info(f"Character update response: {response}")
-        else:
+        if not request_data_list:
             logger.info("No character data to update")
+            return
 
+        for request_data in request_data_list:
+            if request_data and request_data.realms:
+                # Call the update endpoint for each group
+                logger.info(
+                    f"Calling character update endpoint for region={request_data.region} version={request_data.version}"
+                )
+                response = await upload_character_data(bot, get_db(), request_data)
+                logger.info(f"Character update response: {response}")
     except Exception as e:
         logger.error(f"Error in scheduled character update: {e}")
 
 
-async def start_scheduler(update_endpoint):
+async def start_scheduler():
     """Start the scheduler to update characters periodically"""
     logger.info("Starting character update scheduler")
 
     # Run immediately on startup
-    await scheduled_character_update(update_endpoint)
+    await scheduled_character_update()
 
     # Then run every hour
     while True:
         await asyncio.sleep(3600)  # 3600 seconds = 1 hour
-        await scheduled_character_update(update_endpoint)
+        await scheduled_character_update()
