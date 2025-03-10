@@ -12,7 +12,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE EXTENSION IF NOT EXISTS "pgsodium" WITH SCHEMA "pgsodium";
+CREATE EXTENSION IF NOT EXISTS "pgsodium";
 
 
 
@@ -66,8 +66,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 CREATE TYPE "public"."character_class" AS ENUM (
-    'death_knight',
-    'demon_hunter',
+    'death-knight',
+    'demon-hunter',
     'druid',
     'evoker',
     'hunter',
@@ -84,6 +84,30 @@ CREATE TYPE "public"."character_class" AS ENUM (
 
 ALTER TYPE "public"."character_class" OWNER TO "postgres";
 
+
+CREATE TYPE "public"."game_region" AS ENUM (
+    'us',
+    'eu',
+    'kr',
+    'tw',
+    'cn'
+);
+
+
+ALTER TYPE "public"."game_region" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."game_version" AS ENUM (
+    'classic',
+    'tbc-classic',
+    'wrath-classic',
+    'cata-classic',
+    'retail'
+);
+
+
+ALTER TYPE "public"."game_version" OWNER TO "postgres";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -92,11 +116,14 @@ SET default_table_access_method = "heap";
 CREATE TABLE IF NOT EXISTS "public"."character" (
     "realm" "text" NOT NULL,
     "name" "text" NOT NULL,
-    "level" integer NOT NULL,
-    "class" "public"."character_class" NOT NULL,
-    "online" boolean DEFAULT false NOT NULL,
-    "zone" "text" NOT NULL,
-    "died_at" timestamp with time zone
+    "level" integer,
+    "online" boolean,
+    "zone" "text",
+    "died_at" timestamp with time zone,
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "version" "public"."game_version" NOT NULL,
+    "region" "public"."game_region" NOT NULL,
+    "class" "public"."character_class"
 );
 
 
@@ -105,8 +132,8 @@ ALTER TABLE "public"."character" OWNER TO "postgres";
 
 CREATE TABLE IF NOT EXISTS "public"."character_watch_chat_telegram" (
     "chat_id" bigint NOT NULL,
-    "realm" "text" NOT NULL,
-    "name" "text" NOT NULL
+    "character_id" "uuid" NOT NULL,
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL
 );
 
 
@@ -114,12 +141,26 @@ ALTER TABLE "public"."character_watch_chat_telegram" OWNER TO "postgres";
 
 
 ALTER TABLE ONLY "public"."character"
-    ADD CONSTRAINT "character_pkey" PRIMARY KEY ("realm", "name");
+    ADD CONSTRAINT "character_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."character"
+    ADD CONSTRAINT "character_version_region_realm_name_key" UNIQUE ("version", "region", "realm", "name");
 
 
 
 ALTER TABLE ONLY "public"."character_watch_chat_telegram"
-    ADD CONSTRAINT "character_watch_chat_telegram_pkey" PRIMARY KEY ("chat_id", "realm", "name");
+    ADD CONSTRAINT "character_watch_chat_telegram_chat_id_character_id_key" UNIQUE ("chat_id", "character_id");
+
+
+
+ALTER TABLE ONLY "public"."character_watch_chat_telegram"
+    ADD CONSTRAINT "character_watch_chat_telegram_pkey" PRIMARY KEY ("id");
+
+
+
+CREATE INDEX "idx_character_watch_character_id" ON "public"."character_watch_chat_telegram" USING "btree" ("character_id");
 
 
 
@@ -127,7 +168,28 @@ CREATE INDEX "idx_characters_class" ON "public"."character" USING "btree" ("clas
 
 
 
+CREATE INDEX "idx_characters_name" ON "public"."character" USING "btree" ("name");
+
+
+
 CREATE INDEX "idx_characters_realm" ON "public"."character" USING "btree" ("realm");
+
+
+
+CREATE INDEX "idx_characters_region" ON "public"."character" USING "btree" ("region");
+
+
+
+CREATE INDEX "idx_characters_version" ON "public"."character" USING "btree" ("version");
+
+
+
+CREATE INDEX "idx_characters_vrr_name" ON "public"."character" USING "btree" ("version", "region", "realm", "name");
+
+
+
+ALTER TABLE ONLY "public"."character_watch_chat_telegram"
+    ADD CONSTRAINT "character_watch_chat_telegram_character_id_fkey" FOREIGN KEY ("character_id") REFERENCES "public"."character"("id") ON DELETE CASCADE;
 
 
 
