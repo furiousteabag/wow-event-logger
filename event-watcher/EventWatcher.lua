@@ -34,7 +34,7 @@ local function UpdateCurrentCharacter(newLevel)
     local name = UnitName("player")
     local existingData = EventWatcherDump.realms[realm][name] or {}
     EventWatcherDump.realms[realm][name] = existingData
-    EventWatcherDump.realms[realm][name].level = newLevel or existingData.level
+    EventWatcherDump.realms[realm][name].level = newLevel or UnitLevel("player") or existingData.level
     EventWatcherDump.realms[realm][name].class = UnitClass("player") or existingData.class
     EventWatcherDump.realms[realm][name].zone = GetZoneText() or GetRealZoneText() or existingData.zone
     EventWatcherDump.realms[realm][name].online = false
