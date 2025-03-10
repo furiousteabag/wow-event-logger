@@ -10,6 +10,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "python-telegram-bot>=21.10",
     "supabase>=2.13.0",
+    "tqdm>=4.67.1",
 ]
 
 [dependency-groups]
