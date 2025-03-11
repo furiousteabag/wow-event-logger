@@ -244,9 +244,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     elseif event == "PLAYER_LOGOUT" then
         UpdateCurrentCharacter()
         SyncDeathlogData()
-    -- elseif event == "PLAYER_LEVEL_UP" then
-    --     local newLevel = ...
-    --     UpdateCurrentCharacter(newLevel)
-    --     print("|cff00ff00EventWatcher:|r You reached level " .. newLevel)
+    elseif event == "PLAYER_LEVEL_UP" then
+        UpdateCurrentCharacter(...)
     end
 end)
