@@ -108,22 +108,6 @@ CREATE TYPE "public"."game_version" AS ENUM (
 
 ALTER TYPE "public"."game_version" OWNER TO "postgres";
 
-
-CREATE OR REPLACE FUNCTION "public"."get_watched_characters"() RETURNS TABLE("id" "uuid", "version" "public"."game_version", "region" "public"."game_region", "realm" "text", "name" "text")
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-  RETURN QUERY
-  SELECT DISTINCT ON (c.id) c.id, c.version, c.region, c.realm, c.name
-  FROM public.character c
-  INNER JOIN public.character_watch_chat_telegram cwct
-  ON c.id = cwct.character_id;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_watched_characters"() OWNER TO "postgres";
-
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -401,12 +385,6 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-
-
-
-GRANT ALL ON FUNCTION "public"."get_watched_characters"() TO "anon";
-GRANT ALL ON FUNCTION "public"."get_watched_characters"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_watched_characters"() TO "service_role";
 
 
 
