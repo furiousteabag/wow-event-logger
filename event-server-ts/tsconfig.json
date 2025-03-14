@@ -25,5 +25,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
-  }
+
+  },
+  "exclude": ["eslint.config.js", "dist", "node_modules"]
 }

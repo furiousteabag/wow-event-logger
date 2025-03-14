@@ -8,6 +8,8 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 
+RUN bun run lint
+
 RUN bun run build
 
 EXPOSE 8000

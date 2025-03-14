@@ -41,14 +41,14 @@ async function updateWatchedCharacters() {
 async function runUpdateWatchedCharacters() {
   try {
     await updateWatchedCharacters()
-  } catch (error) {}
+  } catch (error) {
+    console.error("Failed to update watched characters:", error)
+  }
 }
 
-function startWatchedCharacterUpdateScheduler(intervalHours: number) {
+export function startWatchedCharacterUpdateScheduler(intervalHours: number) {
   logger.info(`Starting character update scheduler (interval: ${intervalHours} hour(s))`)
   const intervalMs = intervalHours * 60 * 60 * 1000
   runUpdateWatchedCharacters()
   setInterval(runUpdateWatchedCharacters, intervalMs)
 }
-
-export default startWatchedCharacterUpdateScheduler
