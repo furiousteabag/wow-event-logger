@@ -34,16 +34,24 @@ const characterClassEnum = z.preprocess(
     "warrior",
   ]) satisfies z.ZodType<Database["public"]["Enums"]["character_class"]>,
 )
-const gameRegionEnum = z.enum(["us", "eu", "kr", "tw", "cn"]) satisfies z.ZodType<
-  Database["public"]["Enums"]["game_region"]
->
-const gameVersionEnum = z.enum([
-  "classic",
-  "tbc-classic",
-  "wrath-classic",
-  "cata-classic",
-  "retail",
-]) satisfies z.ZodType<Database["public"]["Enums"]["game_version"]>
+
+export const gameRegionEnum = z.preprocess(
+  (val) => {
+    if (typeof val !== "string") return val
+    return normalizeString(val)
+  },
+  z.enum(["us", "eu", "kr", "tw", "cn"]) satisfies z.ZodType<Database["public"]["Enums"]["game_region"]>,
+)
+
+export const gameVersionEnum = z.preprocess(
+  (val) => {
+    if (typeof val !== "string") return val
+    return normalizeString(val)
+  },
+  z.enum(["classic", "tbc-classic", "wrath-classic", "cata-classic", "retail"]) satisfies z.ZodType<
+    Database["public"]["Enums"]["game_version"]
+  >,
+)
 
 export const CharacterSchema = z.object({
   class: characterClassEnum.nullable().optional(),
@@ -57,4 +65,17 @@ export const CharacterRequestSchema = z.object({
   region: gameRegionEnum,
   version: gameVersionEnum,
   realms: z.record(z.record(CharacterSchema)),
+})
+
+export const CharacterTelegramSchema = z.object({
+  version: gameVersionEnum,
+  region: gameRegionEnum,
+  realm: z
+    .string()
+    .min(2, "Realm name must be at least 2 characters")
+    .transform((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()),
+  name: z
+    .string()
+    .min(2, "Character name must be at least 2 characters")
+    .transform((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()),
 })
