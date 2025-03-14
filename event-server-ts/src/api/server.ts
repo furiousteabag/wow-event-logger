@@ -36,14 +36,16 @@ router.post("/character", async (req, res) => {
           level: character.level,
           zone: character.zone,
           online: character.online,
-          died_at: character.died_at ? new Date(character.died_at).toISOString() : null,
+          died_at: character.died_at ? new Date(character.died_at * 1000).toISOString() : null,
         })
       }
     }
-    const charactersEvents = await handleCharactersUpdates(characters, [notifyTelegramSubscribers])
+    // const charactersEvents = await handleCharactersUpdates(characters, [notifyTelegramSubscribers])
+    const charactersFull = await handleCharactersUpdates(characters, [notifyTelegramSubscribers])
     res.json({
       success: true,
-      data: { level_ups: charactersEvents.level_ups.length, deaths: charactersEvents.deaths.length },
+      // data: { level_ups: charactersEvents.level_ups.length, deaths: charactersEvents.deaths.length },
+      data: { message: `Updated ${charactersFull.length} character(s)` },
     })
   } catch (error) {
     if (error instanceof ZodError) {
