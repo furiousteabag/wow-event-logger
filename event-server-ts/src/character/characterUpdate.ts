@@ -14,5 +14,7 @@ export async function handleCharactersUpdates(
 
   await Promise.all(notifySubscribers.map((notifyFn) => notifyFn(charactersEvents)))
 
+  logger.info(`Finished handling updates for ${characters.length} character(s)`)
+
   return charactersEvents
 }
