@@ -73,7 +73,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_watched_characters: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          class: Database["public"]["Enums"]["character_class"] | null
+          died_at: string | null
+          id: string
+          level: number | null
+          name: string
+          online: boolean | null
+          realm: string
+          region: Database["public"]["Enums"]["game_region"]
+          version: Database["public"]["Enums"]["game_version"]
+          zone: string | null
+        }[]
+      }
     }
     Enums: {
       character_class:

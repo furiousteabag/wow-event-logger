@@ -130,6 +130,22 @@ CREATE TABLE IF NOT EXISTS "public"."character" (
 ALTER TABLE "public"."character" OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_watched_characters"() RETURNS SETOF "public"."character"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT DISTINCT ON (c.id) c.*
+  FROM public.character c
+  INNER JOIN public.character_watch_chat_telegram cwct
+  ON c.id = cwct.character_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_watched_characters"() OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."character_watch_chat_telegram" (
     "chat_id" bigint NOT NULL,
     "character_id" "uuid" NOT NULL,
@@ -388,24 +404,30 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 GRANT ALL ON TABLE "public"."character" TO "anon";
 GRANT ALL ON TABLE "public"."character" TO "authenticated";
 GRANT ALL ON TABLE "public"."character" TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_watched_characters"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_watched_characters"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_watched_characters"() TO "service_role";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
