@@ -20,7 +20,10 @@ const classEmojis: Record<CharacterClass, string> = {
 }
 
 export function formatCharacter(character: Character, includeRealm = true): string {
-  const formattedName = `*${character.name}*`
+  let formattedName = `*${character.name}*`
+  if (character.version === "classic" && character.level && character.level >= 10) {
+    formattedName = `[${formattedName}](https://era.raider.io/characters/${character.region}/${character.realm}/${character.name})`
+  }
   const classEmoji = character.class ? classEmojis[character.class] || "🎮" : "🎮"
   const zoneInfo = character.zone ? `📍${character.zone}` : ""
   // const status = character.online ? "🟢Online" : "⭕Offline"

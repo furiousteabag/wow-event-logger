@@ -105,6 +105,9 @@ bot.command("add", async (ctx) => {
   if (existingWatches)
     return ctx.reply(`This character is already in the watchlist:\n\n${formatCharacter(characterFull)}`, {
       parse_mode: "MarkdownV2",
+      link_preview_options: {
+        is_disabled: true,
+      },
     })
   const { error: insertError } = await supabase.from("character_watch_chat_telegram").insert({
     character_id: characterFull.id,
@@ -114,7 +117,12 @@ bot.command("add", async (ctx) => {
     logger.error("Error adding watch:", insertError)
     return ctx.reply(`Error adding character to watchlist: ${insertError.message}`)
   }
-  return ctx.reply(`Added character to watchlist:\n\n${formatCharacter(characterFull)}`, { parse_mode: "MarkdownV2" })
+  return ctx.reply(`Added character to watchlist:\n\n${formatCharacter(characterFull)}`, {
+    parse_mode: "MarkdownV2",
+    link_preview_options: {
+      is_disabled: true,
+    },
+  })
 })
 
 bot.command("remove", async (ctx) => {
@@ -147,6 +155,9 @@ bot.command("remove", async (ctx) => {
   }
   return ctx.reply(`Removed character from watchlist:\n\n${formatCharacter(characterFull)}`, {
     parse_mode: "MarkdownV2",
+    link_preview_options: {
+      is_disabled: true,
+    },
   })
 })
 
@@ -238,7 +249,12 @@ bot.command("list", async (ctx) => {
 
   message = message.trim()
 
-  return ctx.reply(message, { parse_mode: "MarkdownV2" })
+  return ctx.reply(message, {
+    parse_mode: "MarkdownV2",
+    link_preview_options: {
+      is_disabled: true,
+    },
+  })
 })
 
 export async function notifyTelegramSubscribers(events: CharactersEvents): Promise<void> {
@@ -309,7 +325,12 @@ export async function notifyTelegramSubscribers(events: CharactersEvents): Promi
     logger.info(`Sending ${type} notification to chat_id: ${chatId}`)
 
     try {
-      await bot.api.sendMessage(parseInt(chatId), message, { parse_mode: "MarkdownV2" })
+      await bot.api.sendMessage(parseInt(chatId), message, {
+        parse_mode: "MarkdownV2",
+        link_preview_options: {
+          is_disabled: true,
+        },
+      })
     } catch (error) {
       logger.error(`Error sending ${type} notification to chat ${chatId}: ${error}`)
       // if (
