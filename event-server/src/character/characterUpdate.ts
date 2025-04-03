@@ -30,11 +30,6 @@ export async function handleCharactersUpdates(
       let updatedChar: CharacterFull
 
       if (existingChar) {
-        if (existingChar.name === "Furiousbars") {
-          console.log(existingChar)
-          console.log(character)
-        }
-
         // Skip updates that would decrease level (likely an error)
         if (existingChar.level && character.level && existingChar.level > character.level) {
           return existingChar
